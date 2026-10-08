@@ -4,7 +4,7 @@ import { outcome } from '../engine/outcome'
 import { moveUci, parseFen } from '../engine/position'
 import { colorOf, fileOf, kindOf, rankOf } from '../engine/squares'
 import type { Rules } from '../engine/types'
-import { playArrow } from '../rules/stripPlay'
+import { playArrow, walkLine } from '../rules/stripPlay'
 import { resultTitle } from '../rules/describe'
 import { squareColors } from './boardColors'
 import { boardFrameStyle, boardTrackStyle, useEvenSquare } from './evenBoard'
@@ -29,6 +29,7 @@ export function MiniBoard({
   active,
   positionResult,
   badge,
+  line,
 }: {
   fen: string
   rules: Rules
@@ -38,43 +39,59 @@ export function MiniBoard({
   active: boolean
   positionResult: boolean
   badge?: string
+  line?: string[]
 }) {
   const slotRef = useRef<HTMLDivElement>(null)
   const box = useEvenSquare(slotRef)
+  const steps = line?.length ? walkLine(rules, fen, line) : null
   const [shown, setShown] = useState(fen)
-  const [line, setLine] = useState<string | null>(null)
+  const [captionLine, setCaptionLine] = useState<string | null>(null)
+  const [step, setStep] = useState(0)
   const marker = label.replace(/[^a-z0-9]+/gi, '') || 'board'
+  const onSequence = Boolean(steps)
+  const sequenceFen = !steps || step === 0 ? fen : steps[step - 1].fen
+  const sequenceDone = Boolean(steps && step > 0 && steps[step - 1].done)
+  const upcoming = steps && !sequenceDone && step < steps.length ? steps[step] : null
+  const drawnArrows = onSequence ? (upcoming ? [{ from: upcoming.from, to: upcoming.to }] : []) : arrows
+  const displayFen = onSequence ? sequenceFen : shown
 
-  const pos = parseFen(shown)
+  const pos = parseFen(displayFen)
   const colors = squareColors(rules.counselor === 'queen' ? 1 : 0)
   const diagram = parseFen(fen)
   const standing = positionResult ? outcome(diagram, rules) : null
   const sole = arrows.length === 1 ? playArrow(rules, fen, arrows[0].from, arrows[0].to) : null
 
   function tap(arrow: Arrow) {
+    if (onSequence && upcoming && arrow.from === upcoming.from && arrow.to === upcoming.to) {
+      setStep((current) => current + 1)
+      return
+    }
     const played = playArrow(rules, fen, arrow.from, arrow.to)
     if (played.legal) {
       setShown(played.fen)
-      setLine(played.title)
+      setCaptionLine(played.title)
       return
     }
     setShown(fen)
-    setLine(played.reason)
+    setCaptionLine(played.reason)
   }
 
-  const caption =
-    line ??
-    (badge
-      ? badge
-      : positionResult
-        ? standing
-          ? resultTitle(standing)
-          : 'The game continues'
-        : sole
-          ? sole.legal
-            ? sole.title
-            : 'Illegal under this rule'
-          : 'Tap a lit arrow to play it. Tap a ghost arrow to hear why not.')
+  const caption = onSequence
+    ? step > 0
+      ? steps![step - 1].title
+      : (badge ?? 'Step the moves.')
+    : (captionLine ??
+      (badge
+        ? badge
+        : positionResult
+          ? standing
+            ? resultTitle(standing)
+            : 'The game continues'
+          : sole
+            ? sole.legal
+              ? sole.title
+              : sole.reason
+            : 'Tap a lit arrow to play it. Tap a ghost arrow to hear why not.'))
 
   return (
     <figure className={active ? 'mini is-active' : 'mini'}>
@@ -124,8 +141,8 @@ export function MiniBoard({
                 <path d="M0 0 L0.5 0.2 L0 0.4 Z" fill="#f0d0cc" />
               </marker>
             </defs>
-            {arrows.map((arrow) => {
-              const legal = prefixLegal(rules, fen, arrow.from, arrow.to)
+            {drawnArrows.map((arrow) => {
+              const legal = onSequence || prefixLegal(rules, fen, arrow.from, arrow.to)
               const from = squareIndex(arrow.from)
               const to = squareIndex(arrow.to)
               const x1 = fileOf(from) + 0.5
@@ -176,8 +193,16 @@ export function MiniBoard({
       <p className="mini-badge" data-testid={`strip-line-${marker}`} role="status">
         {caption}
       </p>
-      {shown !== fen ? (
-        <button type="button" className="text-link" onClick={() => { setShown(fen); setLine(null) }}>
+      {(onSequence ? step > 0 : shown !== fen) ? (
+        <button
+          type="button"
+          className="text-link"
+          onClick={() => {
+            setShown(fen)
+            setCaptionLine(null)
+            setStep(0)
+          }}
+        >
           Back to the diagram
         </button>
       ) : null}

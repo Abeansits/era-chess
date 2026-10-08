@@ -3,7 +3,7 @@ import { legendFor } from '../engine/notation'
 import type { HistoryEntry } from '../game/session'
 import type { Rules } from '../engine/types'
 
-type Cell = { text: string; ply: number }
+type Cell = { text: string; ply: number; note: string | null }
 
 export function Scoresheet({
   history,
@@ -20,7 +20,7 @@ export function Scoresheet({
   const rows: { n: number; w?: Cell; b?: Cell }[] = []
   history.forEach((entry, ply) => {
     const text = secondary ? entry.secondary : entry.primary
-    const cell = { text, ply }
+    const cell = { text, ply, note: entry.note }
     if (entry.turn === 'w') rows.push({ n: rows.length + 1, w: cell })
     else if (rows.length === 0) rows.push({ n: 1, b: cell })
     else rows[rows.length - 1].b = cell
@@ -105,6 +105,7 @@ function MoveCell({
       onClick={() => onView(cell.ply + 1)}
     >
       {cell.text}
+      {cell.note ? <span className="sheet-note">{cell.note}</span> : null}
     </button>
   )
 }

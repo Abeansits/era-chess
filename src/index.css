@@ -139,6 +139,12 @@ h1, h2, h3 { font-family: Fraunces, Palatino, serif; font-weight: 600; letter-sp
   color: #cbbba4;
 }
 .film-legend .is-on { color: var(--brass-2); }
+.play-choices { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; }
+.already-result { margin: 0; font-size: 0.92rem; }
+.era-note { margin: 0.15rem 0 0.55rem; color: var(--brass-2); font-style: italic; }
+.board-ply { margin: 0 0 0.35rem; color: var(--brass-2); font-size: 0.85rem; }
+.sheet-note { display: block; margin-top: 0.15rem; color: var(--brass-2); font-style: italic; font-size: 0.78rem; font-weight: 400; }
+.play-board-wrap:focus { outline: 2px solid var(--brass-2); outline-offset: 3px; }
 .unknown-stop {
   margin: 0 0 0.7rem;
   padding: 0.65rem 0.85rem;

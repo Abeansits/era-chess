@@ -19,7 +19,9 @@ export type StripModel = {
   positionResult: boolean
   active: 'left' | 'right' | null
   /** Opens a live game from this diagram. Bare king and stalemate. */
-  play?: { fen: string }
+  play?: { fen: string; settled?: boolean }
+  /** A sequence the two boards step, one ply at a time. */
+  line?: string[]
 }
 
 const BARE = '8/p7/8/4k3/8/8/R7/7K w - - 0 1'
@@ -28,6 +30,8 @@ const QUEEN = '6k1/8/8/8/8/8/4P3/3QK3 w - - 0 1'
 const PASSING = '4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 1'
 const CASTLES = '6k1/8/8/8/8/8/8/R3K2R w KQ - 0 1'
 const STALE = 'k7/8/1Q6/8/8/8/8/7K b - - 0 1'
+const REPEAT_FEN = '4k3/8/8/8/8/8/8/4K2R w - - 0 1'
+const REPEAT_LINE = ['h1h2', 'e8e7', 'h2h1', 'e7e8', 'h1h2', 'e8e7', 'h2h1', 'e7e8']
 
 export function stripFor(eraId: EraId, chipId?: string): StripModel {
   const era = eraById(eraId)
@@ -130,27 +134,28 @@ export function stripFor(eraId: EraId, chipId?: string): StripModel {
       arrows: [],
       positionResult: true,
       active: 'right',
-      play: { fen: STALE },
+      play: { fen: STALE, settled: true },
     }
   }
   return {
     heading: 'The third time, it is over',
-    note: 'FIDE’s addition is not a new piece. It is the clock, touch-move, and a repetition draw that this board applies by itself.',
+    note: 'FIDE’s addition is not a new piece. It is the clock, touch-move, and a repetition draw that this board applies by itself. Step the rook. The third return of this position ends the FIDE game.',
     left: {
       label: 'Tournament habit',
       sub: 'Repetition is not yet law',
-      fen: '4k3/8/8/8/8/8/8/4K2N w - - 0 1',
+      fen: REPEAT_FEN,
       rules: resolveRules(eraById('tournament')),
       badge: 'The same position can return. Play on.',
     },
     right: {
       label: 'FIDE',
       sub: 'Three repetitions draw',
-      fen: '4k3/8/8/8/8/8/8/4K2N w - - 0 1',
+      fen: REPEAT_FEN,
       rules: current,
       badge: 'The third time, the game is drawn. No claim to make.',
     },
     arrows: [],
+    line: REPEAT_LINE,
     positionResult: false,
     active: 'right',
   }

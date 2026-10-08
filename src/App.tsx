@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Difficulty } from './engine/levels'
-import { parseFen } from './engine/position'
 import type { Color } from './engine/squares'
-import { createSession, sessionFromLink, type PlayMode, type Session } from './game/session'
+import { createSession, openSharedLink, type PlayMode, type Session } from './game/session'
 import { eras, type EraId } from './rules/eras'
 import { SETTLE_MS, easeOutCubic } from './ui/blend'
-import { museumSearch, readGameLink, readMuseumQuery } from './ui/query'
+import { museumSearch, readMuseumQuery } from './ui/query'
 import { Museum } from './ui/Museum'
 import { PlayView } from './ui/PlayView'
 import { useReducedMotion } from './ui/useReducedMotion'
@@ -23,13 +22,18 @@ export function App() {
   const [dragging, setDragging] = useState(false)
   const [chips, setChips] = useState<Partial<Record<EraId, string>>>(() => initialMuseum().chips)
   const [unknownStop, setUnknownStop] = useState<string | null>(() => initialMuseum().unknownStop)
-  const [urlLive, setUrlLive] = useState(() => !initialMuseum().unknownStop)
+  const [linkNotice, setLinkNotice] = useState<string | null>(() =>
+    typeof window === 'undefined' ? null : openSharedLink(window.location.search, Date.now()).notice,
+  )
+  const [commitTarget, setCommitTarget] = useState(() => initialMuseum().index)
+  const [urlLive, setUrlLive] = useState(
+    () => !initialMuseum().unknownStop && (typeof window === 'undefined' || !openSharedLink(window.location.search, 0).notice),
+  )
   const [human, setHuman] = useState<Color>('w')
   const [difficulty, setDifficulty] = useState<Difficulty>('medium')
   const [session, setSession] = useState<Session | null>(() => {
     if (typeof window === 'undefined') return null
-    const link = readGameLink(window.location.search)
-    return link ? sessionFromLink(link, Date.now()) : null
+    return openSharedLink(window.location.search, Date.now()).session
   })
   const reduced = useReducedMotion()
   const indexRef = useRef(index)
@@ -56,6 +60,7 @@ export function App() {
 
   function followUrl() {
     setUnknownStop(null)
+    setLinkNotice(null)
     setUrlLive(true)
   }
 
@@ -72,6 +77,7 @@ export function App() {
     const target = Math.round(Math.min(6, Math.max(0, value)))
     cancelAnimationFrame(frame.current)
     setDragging(false)
+    setCommitTarget(target)
     const from = indexRef.current
     if (reduced || Math.abs(target - from) < 0.01) {
       indexRef.current = target
@@ -115,6 +121,8 @@ export function App() {
           onPreview={preview}
           onCommit={commit}
           unknownStop={unknownStop}
+          linkNotice={linkNotice}
+          commitTarget={commitTarget}
           onChip={(id) => {
             followUrl()
             setChips((current) => ({ ...current, [era.id]: id }))
@@ -135,14 +143,14 @@ export function App() {
               }),
             )
           }}
-          onPlayPosition={(fen) => {
+          onPlayPosition={(fen, mode, side) => {
             const now = Date.now()
             setSession(
               createSession({
                 eraId: era.id,
                 chipId,
-                mode: 'engine',
-                human: parseFen(fen).turn,
+                mode,
+                human: side,
                 difficulty,
                 fen,
                 now,

@@ -6,7 +6,7 @@ import { opposite, sqName, type Color, type PieceKind } from '../engine/squares'
 import { requestMove } from '../engine/engineClient'
 import { engineSeed } from '../engine/search'
 import { levelById } from '../engine/levels'
-import { agreeDraw, attemptDrop, commitMove, createSession, positionAt, resign, resigningSide, shareLink, tick, type Session } from '../game/session'
+import { agreeDraw, attemptDrop, commitMove, createSession, pauseClock, positionAt, resign, resigningSide, resumeClock, shareLink, tick, type Session } from '../game/session'
 import { activeChip, eraById } from '../rules/eras'
 import { resultTitle } from '../rules/describe'
 import { PieceGlyph } from './pieces'
@@ -74,16 +74,28 @@ export function PlayView({
   }, [reason])
 
   useEffect(() => {
-    if (!session.clocks || session.result) return
+    if (!session.clocks || session.result || browsing) return
     const id = window.setInterval(() => setNow(Date.now()), 250)
     return () => window.clearInterval(id)
-  }, [session.clocks, session.result, session.clockStamp])
+  }, [session.clocks, session.result, session.clockStamp, browsing])
 
   useEffect(() => {
-    if (!session.clocks || session.result || session.clockStamp === null) return
+    if (browsing || !session.clocks || session.result || session.clockStamp === null) return
     const left = session.clocks[session.pos.turn] - (Date.now() - session.clockStamp)
     if (left <= 0) onSession(tick(session, Date.now()))
-  }, [now, session, onSession])
+  }, [now, session, onSession, browsing])
+
+  useEffect(() => {
+    if (!browsing) return
+    const paused = pauseClock(session, Date.now())
+    if (paused !== session) onSession(paused)
+  }, [browsing, session, onSession])
+
+  useEffect(() => {
+    if (browsing) return
+    const resumed = resumeClock(session, Date.now())
+    if (resumed !== session) onSession(resumed)
+  }, [browsing, session, onSession])
 
   useEffect(() => {
     if (viewPly !== null || session.mode !== 'engine' || session.result || session.pos.turn === session.human) return
@@ -164,6 +176,14 @@ export function PlayView({
     return Math.max(0, session.clocks[side] - (now - session.clockStamp))
   }
 
+  function stepPly(delta: number) {
+    const current = viewPly ?? session.history.length
+    const next = Math.min(session.history.length, Math.max(0, current + delta))
+    setViewPly(next >= session.history.length ? null : next)
+  }
+
+  const notedPly = browsing ? (viewPly && viewPly > 0 ? viewPly - 1 : -1) : session.history.length - 1
+  const eraNote = notedPly >= 0 ? session.history[notedPly].note : null
   const bareHint =
     session.rules.bareKing && countColor(session.pos, opposite(session.pos.turn)) === 2
   const turnName = session.pos.turn === 'w' ? 'White' : 'Black'
@@ -236,8 +256,8 @@ export function PlayView({
         <div>
           {session.clocks ? (
             <div className="clocks">
-              <Clock label="White" ms={remaining('w')} live={session.pos.turn === 'w' && !session.result} />
-              <Clock label="Black" ms={remaining('b')} live={session.pos.turn === 'b' && !session.result} />
+              <Clock label="White" ms={remaining('w')} live={session.pos.turn === 'w' && !session.result && !browsing} />
+              <Clock label="Black" ms={remaining('b')} live={session.pos.turn === 'b' && !session.result && !browsing} />
             </div>
           ) : null}
           {thinking && !session.result ? (
@@ -267,6 +287,11 @@ export function PlayView({
               {session.boardStill ? 'White stays down' : 'Turn the board each ply'}
             </button>
           ) : null}
+          {eraNote ? (
+            <p className="era-note" data-testid="era-note">
+              {eraNote}
+            </p>
+          ) : null}
           {shareNote ? (
             <p className="share-note" data-testid="share-status" role="status">
               {shareNote}
@@ -286,6 +311,8 @@ export function PlayView({
             onDrop={(from, to) => drop(from, to)}
             onReason={(text, square) => setReason({ text, square })}
             reasonSquare={reason?.square ?? null}
+            onStep={stepPly}
+            plyMark={browsing ? `Move ${viewPly} of ${session.history.length}` : null}
           />
           {pending?.kind === 'rook' ? (
             <div className="rook-choice" data-testid="rook-choice">

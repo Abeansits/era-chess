@@ -2,12 +2,13 @@ import { explainDrop } from '../engine/explain'
 import { legalMoves, makeMove } from '../engine/moves'
 import { notationPair } from '../engine/notation'
 import { outcome } from '../engine/outcome'
-import { moveUci, parseFen, positionKey, startFen, toFen } from '../engine/position'
+import { moveUci, parseFen, positionKey, startFen, toFen, tryParseFen } from '../engine/position'
 import { opposite, sqName, type Color, type PieceKind } from '../engine/squares'
 import type { GameResult, Move, Position, Rules } from '../engine/types'
 import type { Difficulty } from '../engine/levels'
-import { type EraId, resolveRules, eraById } from '../rules/eras'
-import { gameSearch, type GameLink } from '../ui/query'
+import { eraMoveSentence } from '../rules/eraMove'
+import { eras, type EraId, resolveRules, eraById } from '../rules/eras'
+import { gameSearch, readGameLink, type GameLink } from '../ui/query'
 
 export type PlayMode = 'pass' | 'engine'
 
@@ -16,6 +17,8 @@ export type HistoryEntry = {
   primary: string
   secondary: string
   turn: Color
+  /** Set when the engine plays a move this stop is about. */
+  note: string | null
 }
 
 export type Session = {
@@ -153,6 +156,8 @@ export function commitMove(session: Session, move: Move, now = 0): Session {
   const key = positionKey(next)
   const hashes = [...session.hashes, key]
   const result = outcome(next, session.rules, repeatsOf(hashes, key))
+  const sentence = eraMoveSentence(session.rules, move, result)
+  const note = session.mode === 'engine' && turn !== session.human ? sentence : null
   let clocks = session.clocks
   if (clocks && session.clockStamp !== null) {
     const spent = Math.max(0, now - session.clockStamp)
@@ -161,7 +166,7 @@ export function commitMove(session: Session, move: Move, now = 0): Session {
   return {
     ...session,
     pos: next,
-    history: [...session.history, { move, primary: noted.primary, secondary: noted.secondary, turn }],
+    history: [...session.history, { move, primary: noted.primary, secondary: noted.secondary, turn, note }],
     hashes,
     result,
     clocks,
@@ -200,6 +205,20 @@ export function positionAt(session: Session, ply: number): Position {
   return pos
 }
 
+/** Freeze the live clock. Studying a ply does not spend the side to move. */
+export function pauseClock(session: Session, now: number): Session {
+  if (!session.clocks || session.result || session.clockStamp === null) return session
+  const frozen = tick(session, now)
+  if (frozen.result) return frozen
+  return { ...frozen, clockStamp: null }
+}
+
+/** Start the clock again from the time that was left when the sheet was opened. */
+export function resumeClock(session: Session, now: number): Session {
+  if (!session.clocks || session.result || session.clockStamp !== null) return session
+  return { ...session, clockStamp: now }
+}
+
 export function replayUci(session: Session, ucis: string[], now = 0): Session {
   let current = session
   for (const uci of ucis) {
@@ -208,6 +227,62 @@ export function replayUci(session: Session, ucis: string[], now = 0): Session {
     current = commitMove(current, move, now)
   }
   return current
+}
+
+function looksLikeMove(token: string): boolean {
+  return /^[a-h][1-8][a-h][1-8][a-z]?([a-h][1-8]){0,2}$/.test(token)
+}
+
+/**
+ * Open a share link, or stay on the museum and say what could not be used.
+ * A bad position, a move this stop refuses, and an unknown chip do not open a quieter game.
+ */
+export function openSharedLink(search: string, now = 0): { session: Session | null; notice: string | null } {
+  const params = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search)
+  const stop = params.get('stop')
+  const era = eras.find((item) => item.id === stop)
+  if (!era) return { session: null, notice: null }
+
+  const chipParam = params.get('chip')
+  const chipKnown = !chipParam || era.chips.some((item) => item.id === chipParam)
+  const fenParam = params.get('fen')
+  const movesParam = params.get('moves')
+  const modeParam = params.get('mode')
+  const isGame = modeParam === 'pass' || modeParam === 'engine' || Boolean(fenParam) || Boolean(movesParam)
+
+  if (isGame && fenParam && !tryParseFen(fenParam)) {
+    return { session: null, notice: 'That position could not be read.' }
+  }
+  if (!chipKnown) {
+    const shown = era.chips.find((item) => item.id === era.defaultChip)?.label ?? era.name
+    return { session: null, notice: `No chip named “${chipParam}”. Showing ${shown}.` }
+  }
+  if (!isGame) return { session: null, notice: null }
+
+  const link = readGameLink(search)
+  if (!link) return { session: null, notice: null }
+  let current = createSession({
+    eraId: link.eraId,
+    chipId: link.chipId,
+    mode: link.mode,
+    human: link.human,
+    difficulty: link.difficulty,
+    fen: link.fen ?? undefined,
+    now,
+    seed: now || 1,
+    boardStill: link.boardStill,
+  })
+  for (const uci of link.moves) {
+    const move = legalMoves(current.pos, current.rules).find((item) => moveUci(item) === uci)
+    if (!move) {
+      const notice = looksLikeMove(uci)
+        ? `“${uci}” is not legal on this board. Those moves were not played.`
+        : `“${uci}” is not a move. Those moves were not played.`
+      return { session: null, notice }
+    }
+    current = commitMove(current, move, now)
+  }
+  return { session: current, notice: null }
 }
 
 export function sessionFromLink(link: GameLink, now = 0): Session {

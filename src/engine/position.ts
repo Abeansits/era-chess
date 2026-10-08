@@ -22,6 +22,16 @@ const FEN_CHAR: Record<string, number> = {
 
 const PIECE_CHAR = ' PNRAFKQBpnrafkqb'
 
+/** Null when the text is not a position this board can read. */
+export function tryParseFen(fen: string): Position | null {
+  try {
+    return parseFen(fen)
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith('Bad FEN')) return null
+    throw error
+  }
+}
+
 export function parseFen(fen: string): Position {
   const [boardPart, turnPart = 'w', castlePart = '-', epPart = '-', halfPart = '0', fullPart = '1'] =
     fen.trim().split(/\s+/)

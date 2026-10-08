@@ -1,14 +1,34 @@
 import { explainDrop } from '../engine/explain'
 import { legalMoves, makeMove } from '../engine/moves'
+import { notationPair } from '../engine/notation'
 import { outcome } from '../engine/outcome'
-import { moveUci, parseFen, toFen } from '../engine/position'
-import { fileOf, parseSq } from '../engine/squares'
-import type { Rules } from '../engine/types'
+import { moveUci, parseFen, positionKey, toFen } from '../engine/position'
+import { fileOf, parseSq, sqName } from '../engine/squares'
+import type { Move, Position, Rules } from '../engine/types'
 import { resultTitle } from './describe'
+import { eraMoveSentence } from './eraMove'
 
 export type ArrowPlay =
   | { legal: true; fen: string; title: string }
   | { legal: false; reason: string }
+
+export type LineStep = {
+  from: string
+  to: string
+  fen: string
+  title: string
+  done: boolean
+}
+
+/** The era’s notation, then check, mate, or the result. Never a blank “legal”. */
+export function playedTitle(pos: Position, rules: Rules, move: Move, repeats = 1): string {
+  const next = makeMove(pos, rules, move)
+  const end = outcome(next, rules, repeats)
+  const noted = notationPair(pos, rules, move).primary
+  if (end) return `${noted}. ${resultTitle(end)}`
+  const sentence = eraMoveSentence(rules, move, null)
+  return sentence ? `${noted}. ${sentence}` : noted
+}
 
 /** Play a strip arrow from the diagram, or quote the rule that refuses it. */
 export function playArrow(rules: Rules, fen: string, from: string, to: string): ArrowPlay {
@@ -24,10 +44,31 @@ export function playArrow(rules: Rules, fen: string, from: string, to: string): 
     }
   }
   const next = makeMove(pos, rules, move)
-  const end = outcome(next, rules)
-  return {
-    legal: true,
-    fen: toFen(next),
-    title: end ? resultTitle(end) : 'Legal. The game continues.',
+  return { legal: true, fen: toFen(next), title: playedTitle(pos, rules, move) }
+}
+
+/** Step a scripted line. Repetition uses the positions actually visited. */
+export function walkLine(rules: Rules, fen: string, ucis: string[]): LineStep[] {
+  let pos = parseFen(fen)
+  const hashes = [positionKey(pos)]
+  const steps: LineStep[] = []
+  for (const uci of ucis) {
+    const move = legalMoves(pos, rules).find((item) => moveUci(item) === uci)
+    if (!move) break
+    const next = makeMove(pos, rules, move)
+    const key = positionKey(next)
+    const repeats = hashes.filter((hash) => hash === key).length + 1
+    hashes.push(key)
+    const end = outcome(next, rules, repeats)
+    steps.push({
+      from: sqName(move.from),
+      to: sqName(move.to),
+      fen: toFen(next),
+      title: playedTitle(pos, rules, move, repeats),
+      done: Boolean(end),
+    })
+    pos = next
+    if (end) break
   }
+  return steps
 }

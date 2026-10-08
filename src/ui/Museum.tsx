@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '../components/ui/button'
 import { LEVELS, type Difficulty } from '../engine/levels'
+import { parseFen } from '../engine/position'
 import type { Color } from '../engine/squares'
 import { activeChip, eras, resolveRules, type EraId } from '../rules/eras'
 import { stripFor } from '../rules/strips'
-import { ARRIVAL } from './arrival'
+import { arrivalCue } from './arrival'
 import { blendSlot } from './blend'
 import { Filmstrip } from './Filmstrip'
 import { leapOpacity } from './leap'
@@ -27,6 +28,8 @@ export function Museum({
   onDifficulty,
   onStart,
   unknownStop,
+  linkNotice,
+  commitTarget,
   onPlayPosition,
 }: {
   index: number
@@ -42,7 +45,9 @@ export function Museum({
   onDifficulty: (level: Difficulty) => void
   onStart: (mode: 'pass' | 'engine') => void
   unknownStop: string | null
-  onPlayPosition: (fen: string) => void
+  linkNotice: string | null
+  commitTarget: number
+  onPlayPosition: (fen: string, mode: 'pass' | 'engine', human: Color) => void
 }) {
   const x = Math.min(6, Math.max(0, index))
   const nearest = Math.round(x)
@@ -53,19 +58,23 @@ export function Museum({
   const [toast, setToast] = useState<string | null>(null)
   const settled = useRef(nearest)
   useEffect(() => {
-    if (dragging) return
-    if (settled.current === nearest) return
-    settled.current = nearest
-    setToast(ARRIVAL[era.id])
+    const cue = arrivalCue(settled.current, x, dragging, dragging ? null : commitTarget)
+    settled.current = cue.stop
+    if (!cue.line) return
+    setToast(cue.line)
     const id = window.setTimeout(() => setToast(null), 3200)
     return () => window.clearTimeout(id)
-  }, [dragging, nearest, era.id])
+  }, [dragging, x, commitTarget])
 
   return (
     <main className="museum">
       {unknownStop ? (
         <p className="unknown-stop" data-testid="unknown-stop" role="status">
           No stop named “{unknownStop}”. Showing Shatranj.
+        </p>
+      ) : linkNotice ? (
+        <p className="unknown-stop" data-testid="link-notice" role="status">
+          {linkNotice}
         </p>
       ) : null}
       <Filmstrip index={x} dragging={dragging} onPreview={onPreview} onCommit={onCommit} />
@@ -119,9 +128,29 @@ export function Museum({
           <div className="strip-head">
             <h2>{strip.heading}</h2>
             {strip.play ? (
-              <Button data-testid="play-position" size="sm" variant="ink" onClick={() => onPlayPosition(strip.play!.fen)}>
-                Play this position
-              </Button>
+              <div className="play-choices" data-testid="play-position">
+                <span className="already-result" data-testid="already-result">
+                  {strip.play.settled ? 'This diagram is already the result.' : 'Play this position'}
+                </span>
+                <Button
+                  size="sm"
+                  variant="ink"
+                  data-testid="play-side-w"
+                  onClick={() => onPlayPosition(strip.play!.fen, 'engine', 'w')}
+                >
+                  You play white
+                </Button>
+                <Button size="sm" data-testid="play-side-b" onClick={() => onPlayPosition(strip.play!.fen, 'engine', 'b')}>
+                  You play black
+                </Button>
+                <Button
+                  size="sm"
+                  data-testid="play-side-pass"
+                  onClick={() => onPlayPosition(strip.play!.fen, 'pass', parseFen(strip.play!.fen).turn)}
+                >
+                  Pass and play
+                </Button>
+              </div>
             ) : null}
           </div>
           <p>{strip.note}</p>
@@ -137,6 +166,7 @@ export function Museum({
             active={strip.active === 'left'}
             positionResult={strip.positionResult}
             badge={strip.left.badge}
+            line={strip.line}
           />
           <MiniBoard
             key={`${strip.right.rules.id}:${strip.right.fen}`}
@@ -148,6 +178,7 @@ export function Museum({
             active={strip.active === 'right'}
             positionResult={strip.positionResult}
             badge={strip.right.badge}
+            line={strip.line}
           />
         </div>
       </section>

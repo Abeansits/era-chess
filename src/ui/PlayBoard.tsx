@@ -18,9 +18,22 @@ type Props = {
   onDrop: (from: number, to: number) => void
   onReason: (reason: string, square: number) => void
   reasonSquare: number | null
+  onStep?: (delta: number) => void
+  plyMark?: string | null
 }
 
-export function PlayBoard({ pos, rules, orientation, lastMove, disabled, onDrop, onReason, reasonSquare }: Props) {
+export function PlayBoard({
+  pos,
+  rules,
+  orientation,
+  lastMove,
+  disabled,
+  onDrop,
+  onReason,
+  reasonSquare,
+  onStep,
+  plyMark,
+}: Props) {
   const slotRef = useRef<HTMLDivElement>(null)
   const boardRef = useRef<HTMLDivElement>(null)
   const box = useEvenSquare(slotRef)
@@ -140,7 +153,24 @@ export function PlayBoard({ pos, rules, orientation, lastMove, disabled, onDrop,
   const checked = inCheck(pos, pos.turn)
 
   return (
-    <div className="play-board-wrap" data-testid="play-board" ref={slotRef}>
+    <div
+      className="play-board-wrap"
+      data-testid="play-board"
+      ref={slotRef}
+      tabIndex={0}
+      aria-label="Board. Left and right step through the moves."
+      onKeyDown={(event) => {
+        if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
+        event.preventDefault()
+        event.stopPropagation()
+        onStep?.(event.key === 'ArrowLeft' ? -1 : 1)
+      }}
+    >
+      {plyMark ? (
+        <p className="board-ply" data-testid="board-ply">
+          {plyMark}
+        </p>
+      ) : null}
       <div className="board-aspect" ref={boardRef} style={boardFrameStyle(box)}>
         <div className="board-grid" style={boardTrackStyle(box)}>
           {Array.from({ length: 64 }, (_, i) => {

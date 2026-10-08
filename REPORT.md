@@ -68,6 +68,10 @@ Names used in the cards: Murray’s *History of Chess*, Ruy López (1561), Staun
 
 Online play against a friend. Courier chess and the other 12×8 boards. Dice chaturanga. A clock before the FIDE stop. A continuous year scrubber. Five regional variants at every date. A stronger search.
 
+## Round 4
+
+A `fen` this board cannot parse stays on the museum: “That position could not be read.” An illegal move, a token that is not a move, and a chip the stop does not have are named the same way, and that game is not opened. The FIDE clock pauses while the sheet is on an earlier ply, and starts again from the time that was left. End, Home, and any jump of more than one stop announce only the destination, once the slider is resting. A lit arrow is the era’s notation, with check or mate when there is one. The FIDE strip steps the rook until the third return of the position draws by itself; the tournament board plays the same line on. Play this position offers White, Black, or pass and play. When the engine plays a capture in passing, a castle, a free castle, or a bare king, that sentence sits under the move. With the board focused, left and right step the ply and mark it on the board.
+
 ## Next
 
 A session is already a plain object with no React in it. The next piece of product is a server that relays that session to a second browser. After that, a closer look at the free-castling manuscripts that disagree with the geometry used here.
