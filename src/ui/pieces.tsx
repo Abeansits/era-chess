@@ -91,27 +91,3 @@ export function PieceGlyph({ kind, color }: { kind: PieceKind; color: Color }) {
   )
 }
 
-export function MorphGlyph({
-  from,
-  to,
-  t,
-  color,
-}: {
-  from: PieceKind
-  to: PieceKind
-  t: number
-  color: Color
-}) {
-  if (t <= 0.02 || from === to) return <PieceGlyph kind={from} color={color} />
-  if (t >= 0.98) return <PieceGlyph kind={to} color={color} />
-  return (
-    <svg viewBox="0 0 44 44" className="piece-svg" aria-hidden>
-      <g opacity={1 - t} transform={`translate(22 22) scale(${1 + t * 0.16}) translate(-22 -22)`}>
-        <Glyph kind={from} color={color} />
-      </g>
-      <g opacity={t} transform={`translate(22 22) scale(${0.68 + t * 0.32}) translate(-22 -22)`}>
-        <Glyph kind={to} color={color} />
-      </g>
-    </svg>
-  )
-}

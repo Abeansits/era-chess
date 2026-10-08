@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import { legalMoves, makeMove } from '../engine/moves'
 import { outcome } from '../engine/outcome'
 import { moveUci, parseFen } from '../engine/position'
@@ -5,6 +6,7 @@ import { colorOf, fileOf, kindOf, rankOf } from '../engine/squares'
 import type { Rules } from '../engine/types'
 import { resultTitle } from '../rules/describe'
 import { squareColors } from './boardColors'
+import { boardFrameStyle, boardTrackStyle, useEvenSquare } from './evenBoard'
 import { PieceGlyph } from './pieces'
 
 type Arrow = { from: string; to: string }
@@ -32,6 +34,8 @@ export function MiniBoard({
   positionResult: boolean
   badge?: string
 }) {
+  const slotRef = useRef<HTMLDivElement>(null)
+  const box = useEvenSquare(slotRef)
   const pos = parseFen(fen)
   const colors = squareColors(rules.counselor === 'queen' ? 1 : 0)
   const marker = label.replace(/[^a-z0-9]+/gi, '') || 'board'
@@ -54,7 +58,11 @@ export function MiniBoard({
         <strong>{label}</strong>
         <span>{sub}</span>
       </figcaption>
-      <div className="mini-board" style={{ background: colors.dark }}>
+      <div className="board-slot" ref={slotRef}>
+      <div
+        className="mini-board"
+        style={{ background: colors.dark, ...boardFrameStyle(box), ...boardTrackStyle(box) }}
+      >
         {Array.from({ length: 64 }, (_, i) => {
           const file = i % 8
           const rank = 7 - Math.floor(i / 8)
@@ -113,6 +121,7 @@ export function MiniBoard({
             )
           })}
         </svg>
+      </div>
       </div>
       <p className="mini-badge">
         {badge

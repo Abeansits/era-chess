@@ -5,6 +5,7 @@ import { fileOf, kindOf, colorOf, rankOf, sqName, type Color, type PieceKind } f
 import type { Move, Position, Rules } from '../engine/types'
 import { REASONS } from '../rules/reasons'
 import { squareColors } from './boardColors'
+import { boardFrameStyle, boardTrackStyle, useEvenSquare } from './evenBoard'
 import { PieceGlyph } from './pieces'
 
 type Props = {
@@ -18,7 +19,9 @@ type Props = {
 }
 
 export function PlayBoard({ pos, rules, orientation, lastMove, disabled, onDrop, onReason }: Props) {
+  const slotRef = useRef<HTMLDivElement>(null)
   const boardRef = useRef<HTMLDivElement>(null)
+  const box = useEvenSquare(slotRef)
   const [selected, setSelected] = useState<number | null>(null)
   const [locked, setLocked] = useState<number | null>(null)
   const [drag, setDrag] = useState<{ from: number; x: number; y: number; ox: number; oy: number } | null>(
@@ -135,9 +138,9 @@ export function PlayBoard({ pos, rules, orientation, lastMove, disabled, onDrop,
   const checked = inCheck(pos, pos.turn)
 
   return (
-    <div className="play-board-wrap" data-testid="play-board">
-      <div className="board-aspect" ref={boardRef}>
-        <div className="board-grid">
+    <div className="play-board-wrap" data-testid="play-board" ref={slotRef}>
+      <div className="board-aspect" ref={boardRef} style={boardFrameStyle(box)}>
+        <div className="board-grid" style={boardTrackStyle(box)}>
           {Array.from({ length: 64 }, (_, i) => {
             const col = i % 8
             const row = Math.floor(i / 8)

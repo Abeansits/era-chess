@@ -3,6 +3,7 @@ import { LEVELS, type Difficulty } from '../engine/levels'
 import type { Color } from '../engine/squares'
 import { activeChip, eras, resolveRules, type EraId } from '../rules/eras'
 import { stripFor } from '../rules/strips'
+import { blendSlot } from './blend'
 import { Filmstrip } from './Filmstrip'
 import { LeapMorph } from './LeapMorph'
 import { MiniBoard } from './MiniBoard'
@@ -141,33 +142,24 @@ function FadingCard({
 }) {
   const x = Math.min(6, Math.max(0, index))
   const nearest = Math.round(x)
-  if (reduced || Math.abs(x - nearest) < 0.02) {
-    const era = eras[nearest]
-    return (
-      <RuleCard era={era} index={nearest} rules={resolveRules(era, chipId)} chip={activeChip(era, chipId)} onChip={onChip} />
-    )
-  }
-  const left = Math.min(5, Math.floor(x))
-  const frac = x - left
-  const right = left + 1
+  const slot = reduced ? { at: nearest, opacity: 1, entering: false } : blendSlot(x)
+  const era = eras[slot.at]
+  const shift = (slot.entering ? 1 - slot.opacity : slot.opacity - 1) * 10
   return (
-    <div className="card-stack" data-blend={frac.toFixed(2)}>
-      {[left, right].map((at, i) => {
-        const era = eras[at]
-        const opacity = i === 0 ? 1 - frac : frac
-        const live = opacity >= 0.5
-        return (
-          <div key={era.id} className="card-layer" style={{ opacity }} aria-hidden={!live}>
-            <RuleCard
-              era={era}
-              index={at}
-              rules={resolveRules(era, chipId)}
-              chip={activeChip(era, chipId)}
-              onChip={live ? onChip : undefined}
-            />
-          </div>
-        )
-      })}
+    <div className="card-stage" data-blend-at={slot.at} data-blend-opacity={slot.opacity.toFixed(2)}>
+      <div
+        className="card-layer"
+        style={{ opacity: slot.opacity, transform: `translateY(${shift}px)` }}
+        aria-hidden={slot.opacity < 0.5}
+      >
+        <RuleCard
+          era={era}
+          index={slot.at}
+          rules={resolveRules(era, chipId)}
+          chip={activeChip(era, chipId)}
+          onChip={slot.opacity >= 0.5 ? onChip : undefined}
+        />
+      </div>
     </div>
   )
 }

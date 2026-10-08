@@ -24,7 +24,7 @@ One rules record per stop, in `src/rules/eras.ts`. `resolveRules` copies that re
 | Tournament chess, 1850–1924 | En passant on, ordinary castling, promote to any piece, stalemate draw, fifty-move draw, king / king+knight / king+bishop draw. No clock, no repetition, no touch-move. Descriptive notation. |
 | FIDE, 1924–now | The tournament game, plus a 10-minute clock, threefold repetition applied by the board, touch-move, and algebraic notation as the primary sheet. |
 
-The filmstrip is a float from 0 to 6. Dragging previews. Releasing snaps to the nearest stop. The queen morph is the fraction between Medieval and Queen’s chess: the ferz slides toward the d-file and becomes a queen, the king slides toward the e-file, the alfils become bishops. The king’s leap drawn above the board, between Queen’s chess and the castling stop, is a picture only. It is not a legal move.
+The filmstrip is a float from 0 to 6. Dragging previews. Releasing eases to the nearest stop in about a quarter of a second, and the board and the card finish that same blend. Between stops only one caption and one rule card are mounted: the outgoing text fades out, and the incoming text fades in after the midpoint. In shatranj and medieval the king stands on the d-file and the ferz on the e-file. Those icons scale away before anything replaces them. The king then steps to the e-file, the queen scales in on the d-file, and bishops scale in where the alfils stood. From queen’s chess on, the queen is on d1 and d8 and the king is on e1 and e8. The king’s leap drawn above the board, between Queen’s chess and the castling stop, is a picture only. It is not a legal move.
 
 The rule card stays under the board until twenty plies (ten moves), then collapses to a Rules button.
 
@@ -54,7 +54,7 @@ These are choices, stated on the cards, not silent ones.
 - Insufficient material is king, king and knight, or king and bishop, and only from the tournament stop.
 - Shatranj does not use a 70-move limit.
 - Clocks exist only on the FIDE stop (ten minutes, no increment). Touch-move is a procedure on that stop: the first piece you take hold of, if it has a legal move, must move.
-- The shatranj array is king on d, ferz on e.
+- The shatranj array is king on d, ferz on e. From queen’s chess on, the queen is on d and the king is on e.
 - Pass and play turns the board. It does not redraw the pieces upside down.
 
 Names used in the cards: Murray’s *History of Chess*, Ruy López (1561), Staunton, the Milan tournament of 1881, and the founding of FIDE in Paris in 1924. Nothing else is cited.

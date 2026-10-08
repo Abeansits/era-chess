@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
+import { parseFen, startFen } from '../engine/position'
+import { colorOf, fileOf, kindOf, rankOf, type PieceKind } from '../engine/squares'
+import { eras } from '../rules/eras'
 import { paletteAt } from './boardColors'
-import { piecesOverlap, previewPieces } from './previewLayout'
+import { morphCaption, piecesOverlap, previewPieces, type PreviewPiece } from './previewLayout'
 
 function channelDelta(a: string, b: string): number {
   const nums = (hex: string) => hex.match(/\d+/g)!.map(Number)
@@ -9,27 +12,77 @@ function channelDelta(a: string, b: string): number {
   return Math.max(...left.map((value, i) => Math.abs(value - right[i])))
 }
 
+function visible(pieces: PreviewPiece[], color: 'w' | 'b', kind: PieceKind): PreviewPiece[] {
+  return pieces.filter((piece) => piece.color === color && piece.kind === kind && piece.opacity > 0.05)
+}
+
+function backRank(id: 'shatranj' | 'queen'): Array<{ file: number; kind: PieceKind }> {
+  const rules = eras.find((era) => era.id === id)!.rules
+  const pos = parseFen(startFen(rules))
+  const out: Array<{ file: number; kind: PieceKind }> = []
+  for (let sq = 0; sq < 64; sq++) {
+    const code = pos.board[sq]
+    if (!code || colorOf(code) !== 'w' || rankOf(sq) !== 0) continue
+    out.push({ file: fileOf(sq), kind: kindOf(code)! })
+  }
+  return out
+}
+
 describe('preview morph', () => {
-  it('turns the ferz into the queen on the e-file before anyone changes squares', () => {
-    const early = previewPieces(0.2)
-    const queen = early.find((piece) => piece.id === 'wf')
-    const king = early.find((piece) => piece.id === 'wk')
-    expect(queen).toMatchObject({ file: 4, rank: 0, from: 'f', to: 'q' })
-    expect(king).toMatchObject({ file: 3, rank: 0 })
-    expect(queen!.glyph).toBeGreaterThan(0.4)
-    expect(queen!.opacity).toBe(1)
+  it('starts on the shatranj array, king on d and ferz on e', () => {
+    const pieces = previewPieces(0).filter((piece) => piece.color === 'w' && piece.rank === 0 && piece.opacity > 0.9)
+    const files = pieces.map((piece) => ({ file: piece.file, kind: piece.kind })).sort((a, b) => a.file - b.file)
+    expect(files).toEqual(backRank('shatranj'))
+    expect(visible(previewPieces(0), 'w', 'k')[0].file).toBe(3)
+    expect(visible(previewPieces(0), 'w', 'f')[0].file).toBe(4)
+    expect(morphCaption(0)).toBe('King on the d-file, ferz on the e-file.')
   })
 
-  it('ends with the queen on the d-file and the king on the e-file', () => {
+  it('lets the old icon finish leaving before the new one appears', () => {
+    const midLeave = previewPieces(0.2)
+    expect(visible(midLeave, 'w', 'f')[0]).toMatchObject({ file: 4 })
+    expect(visible(midLeave, 'w', 'f')[0].opacity).toBeLessThan(1)
+    expect(visible(midLeave, 'w', 'q')).toHaveLength(0)
+    expect(visible(midLeave, 'w', 'b')).toHaveLength(0)
+    expect(visible(midLeave, 'w', 'k')[0].file).toBe(3)
+
+    const between = previewPieces(0.5)
+    expect(visible(between, 'w', 'f')).toHaveLength(0)
+    expect(visible(between, 'w', 'q')).toHaveLength(0)
+    expect(visible(between, 'w', 'a')).toHaveLength(0)
+    expect(visible(between, 'w', 'b')).toHaveLength(0)
+    const king = visible(between, 'w', 'k')[0]
+    expect(king.file).toBeGreaterThan(3)
+    expect(king.file).toBeLessThan(4)
+  })
+
+  it('ends on the queen’s-chess array, queen on d and king on e', () => {
     const done = previewPieces(1)
-    expect(done.find((piece) => piece.id === 'wf')).toMatchObject({ file: 3, to: 'q', opacity: 1, glyph: 1 })
-    expect(done.find((piece) => piece.id === 'wk')).toMatchObject({ file: 4, opacity: 1 })
+    const files = done
+      .filter((piece) => piece.color === 'w' && piece.rank === 0 && piece.opacity > 0.9)
+      .map((piece) => ({ file: piece.file, kind: piece.kind }))
+      .sort((a, b) => a.file - b.file)
+    expect(files).toEqual(backRank('queen'))
+    expect(visible(done, 'w', 'q')[0]).toMatchObject({ file: 3, opacity: 1, scale: 1 })
+    expect(visible(done, 'w', 'k')[0]).toMatchObject({ file: 4, opacity: 1 })
+    expect(visible(done, 'w', 'f')).toHaveLength(0)
+    expect(morphCaption(1)).toBe('Queen on the d-file, king on the e-file.')
   })
 
-  it('never draws two pieces on top of each other', () => {
-    for (let step = 0; step <= 40; step++) {
-      const pieces = previewPieces(step / 40)
+  it('never stacks two icons, including the ferz with the queen', () => {
+    for (let step = 0; step <= 100; step++) {
+      const pieces = previewPieces(step / 100)
       expect(piecesOverlap(pieces)).toBe(false)
+      for (const color of ['w', 'b'] as const) {
+        const counselor = [...visible(pieces, color, 'f'), ...visible(pieces, color, 'q')]
+        expect(counselor.length).toBeLessThanOrEqual(1)
+        for (const file of [2, 5]) {
+          const elephant = visible(pieces, color, 'a')
+            .concat(visible(pieces, color, 'b'))
+            .filter((piece) => piece.file === file)
+          expect(elephant.length).toBeLessThanOrEqual(1)
+        }
+      }
     }
   })
 })

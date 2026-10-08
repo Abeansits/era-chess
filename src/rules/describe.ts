@@ -32,7 +32,11 @@ export function boardLines(rules: Rules): string[] {
         : rules.fiftyMove
           ? 'Stalemate is a draw. Fifty barren moves is a draw.'
           : 'Stalemate is a draw.'
-  return [piece, pawn, castle, promo, ending]
+  const array =
+    rules.counselor === 'ferz'
+      ? 'The king starts on the d-file, the ferz on the e-file.'
+      : 'The queen starts on the d-file, the king on the e-file.'
+  return [array, piece, pawn, castle, promo, ending]
 }
 
 export function resultTitle(result: GameResult): string {

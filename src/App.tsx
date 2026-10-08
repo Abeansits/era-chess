@@ -3,6 +3,7 @@ import type { Difficulty } from './engine/levels'
 import type { Color } from './engine/squares'
 import { createSession, type PlayMode, type Session } from './game/session'
 import { eras, type EraId } from './rules/eras'
+import { SETTLE_MS, easeOutCubic } from './ui/blend'
 import { Museum } from './ui/Museum'
 import { PlayView } from './ui/PlayView'
 import { useReducedMotion } from './ui/useReducedMotion'
@@ -54,9 +55,8 @@ export function App() {
     }
     const start = performance.now()
     const step = (now: number) => {
-      const u = Math.min(1, (now - start) / 320)
-      const eased = 1 - (1 - u) ** 3
-      const next = from + (target - from) * eased
+      const u = Math.min(1, (now - start) / SETTLE_MS)
+      const next = from + (target - from) * easeOutCubic(u)
       indexRef.current = next
       setIndex(next)
       if (u < 1) frame.current = requestAnimationFrame(step)

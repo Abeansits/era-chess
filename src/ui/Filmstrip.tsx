@@ -1,5 +1,6 @@
 import { useRef } from 'react'
 import { eras } from '../rules/eras'
+import { blendSlot } from './blend'
 
 type Props = {
   index: number
@@ -13,8 +14,8 @@ export function Filmstrip({ index, dragging, onPreview, onCommit }: Props) {
   const trackRef = useRef<HTMLDivElement>(null)
   const pointing = useRef(false)
   const clamped = Math.min(6, Math.max(0, index))
-  const left = Math.min(5, Math.floor(clamped))
-  const frac = clamped >= 6 ? 1 : clamped - left
+  const slot = blendSlot(clamped)
+  const shown = eras[slot.at]
 
   function read(clientX: number) {
     const rect = trackRef.current?.getBoundingClientRect()
@@ -110,18 +111,17 @@ export function Filmstrip({ index, dragging, onPreview, onCommit }: Props) {
         </div>
         <div className="sprockets" />
       </div>
-      <p className="film-caption">
-        <span className="caption-stack">
-          <span style={{ opacity: 1 - frac }}>
-            {eras[left].name}
-            <span className="dot"> · </span>
-            {eras[left].years}
-          </span>
-          <span style={{ opacity: frac }}>
-            {eras[Math.min(6, left + 1)].name}
-            <span className="dot"> · </span>
-            {eras[Math.min(6, left + 1)].years}
-          </span>
+      <p className="film-caption" data-blend-at={slot.at} data-blend-opacity={slot.opacity.toFixed(2)}>
+        <span
+          className="caption-slot"
+          style={{
+            opacity: slot.opacity,
+            transform: `translateY(${(slot.entering ? 1 - slot.opacity : slot.opacity - 1) * 8}px)`,
+          }}
+        >
+          {shown.name}
+          <span className="dot"> · </span>
+          {shown.years}
         </span>
       </p>
     </div>

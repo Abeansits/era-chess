@@ -135,8 +135,12 @@ h1, h2, h3 { font-family: Fraunces, Palatino, serif; font-weight: 600; letter-sp
   color: #cbbba4;
   font-size: 0.92rem;
 }
-.caption-stack { display: grid; min-height: 1.4rem; }
-.caption-stack > span { grid-area: 1 / 1; font-family: Fraunces, serif; font-style: italic; }
+.caption-slot {
+  display: block;
+  min-height: 1.4rem;
+  font-family: Fraunces, serif;
+  font-style: italic;
+}
 .dot { opacity: 0.5; }
 
 .leap {
@@ -148,8 +152,7 @@ h1, h2, h3 { font-family: Fraunces, Palatino, serif; font-weight: 600; letter-sp
   color: #d9cbb6;
   overflow: hidden;
 }
-.card-stack { display: grid; }
-.card-layer { grid-area: 1 / 1; }
+.card-stage { min-height: 1px; }
 .card-layer[aria-hidden='true'] { pointer-events: none; }
 .level-detail { margin: 0.45rem 0 0; color: #cbbba4; font-size: 0.85rem; }
 .thinking {
@@ -185,6 +188,7 @@ h1, h2, h3 { font-family: Fraunces, Palatino, serif; font-weight: 600; letter-sp
 }
 
 .preview-frame, .play-board-wrap { width: min(100%, 640px); margin: 0 auto; }
+.board-slot { width: 100%; }
 /* The frame is a true square. The grid is pinned to that square so piece
    art cannot stretch a rank. Rows and columns are equal fractions, and
    minmax(0, 1fr) stops an SVG's intrinsic size from becoming a row minimum. */
