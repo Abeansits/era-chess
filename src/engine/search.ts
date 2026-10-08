@@ -256,6 +256,17 @@ export function engineSeed(seed: number, ply: number): number {
   return (mixed >>> 0) || 1
 }
 
+/**
+ * Root only. A quiet king-and-rook look often ties a castle with a rook lift or a king step,
+ * and an early stop keeps that look. Prefer the castle by less than a pawn, and prefer the
+ * free castle that puts the rook beside the king. A mate, or a won piece, still outranks it.
+ */
+function rootCastleBonus(move: Move, rules: Rules): number {
+  if (!move.castle || rules.castling === 'none') return 0
+  const beside = Math.abs(fileOf(move.to) - fileOf(move.castle.rookTo)) === 1
+  return beside ? 16 : 8
+}
+
 function rng(seed: number): () => number {
   let state = seed || 1
   return () => {
@@ -304,9 +315,10 @@ export function pickMove(pos: Position, rules: Rules, options: SearchOptions = {
           localBest = move
         }
       }
+      for (const entry of ranked) entry.score += rootCastleBonus(entry.move, rules)
       ranked.sort((a, b) => b.score - a.score)
       moves = ranked.map((entry) => entry.move)
-      best = localBest
+      best = ranked[0]?.move ?? localBest
       completed = ranked
       if (localScore > MATE - 80) break
     }

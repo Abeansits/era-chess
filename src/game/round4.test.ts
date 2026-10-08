@@ -21,6 +21,32 @@ describe('a share link that cannot be played', () => {
     expect(() => openSharedLink('?stop=fide&mode=pass&fen=8/8/8/8/8/8/8', 1)).not.toThrow()
   })
 
+  it('does not score a missing king or a second king as checkmate', () => {
+    const fens = [
+      '4k3/8/8/8/8/8/8/8',
+      '8/8/8/8/8/8/8/4K3',
+      '8/8/8/8/8/8/8/8',
+      '4k3/8/8/8/8/8/8/8 b - - 0 1',
+      '4k3/8/8/8/8/8/8/K6K',
+      'k6k/8/8/8/8/8/8/4K3',
+    ]
+    for (const fen of fens) {
+      const opened = openSharedLink(`?stop=fide&mode=pass&fen=${encodeURIComponent(fen)}`, 1)
+      expect(opened.session, fen).toBeNull()
+      expect(opened.notice, fen).toBe('That position could not be read.')
+    }
+    const rules = resolveRules(eraById('fide'))
+    const missing = parseFen('4k3/8/8/8/8/8/8/4K3 w - - 0 1')
+    missing.board[4] = 0
+    expect(outcome(missing, rules)?.reason).not.toBe('checkmate')
+    const doubled = parseFen('4k3/8/8/8/8/8/8/4K3 w - - 0 1')
+    doubled.board[0] = doubled.board[4]
+    expect(outcome(doubled, rules)?.reason).not.toBe('checkmate')
+    const twoBlack = parseFen('4k3/8/8/8/8/8/8/4K3 w - - 0 1')
+    twoBlack.board[56] = twoBlack.board[60]
+    expect(outcome(twoBlack, rules)?.reason).not.toBe('checkmate')
+  })
+
   it('names an illegal move, junk, and an unknown chip instead of opening a quieter game', () => {
     const illegal = openSharedLink('?stop=shatranj&mode=pass&moves=e2e4', 1)
     expect(illegal.session).toBeNull()
@@ -44,6 +70,17 @@ describe('a share link that cannot be played', () => {
     const played = openSharedLink('?stop=fide&mode=pass&moves=e2e4.e7e5', 1)
     expect(played.notice).toBeNull()
     expect(played.session?.history).toHaveLength(2)
+
+    const third = openSharedLink('?stop=fide&mode=pass&moves=e2e4.e7e5.e2e4', 1)
+    expect(third.session).toBeNull()
+    expect(third.notice).toContain('move 3')
+    expect(third.notice).toContain('e2e4')
+    expect(third.notice).not.toContain('move 1')
+
+    const first = openSharedLink('?stop=shatranj&mode=pass&moves=e2e4', 1)
+    expect(first.notice).toContain('move 1')
+    const junkPly = openSharedLink('?stop=fide&mode=pass&moves=e2e4.zzzz', 1)
+    expect(junkPly.notice).toContain('move 2')
   })
 })
 

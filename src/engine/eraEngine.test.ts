@@ -34,6 +34,31 @@ describe('an opponent that knows the era', () => {
     expect(free?.castle, moveUci(free!)).toBeTruthy()
   })
 
+  it('still castles in a quiet king-and-rook position when a tied look is all that finishes', () => {
+    const quiet = '6k1/8/8/8/8/8/8/4K2R w K - 0 1'
+    const hard = levelById('hard')
+    const ordinary = resolveRules(eraById('castling'), 'ordinary')
+    const italian = resolveRules(eraById('castling'), 'italy1700')
+    for (const depth of [1, 4]) {
+      for (const seed of [1, 99]) {
+        const options = { budgetMs: hard.budgetMs, maxDepth: depth, jitter: hard.jitter, seed }
+        expect(moveUci(pickMove(parseFen(quiet), ordinary, options)!), `ordinary d${depth} seed ${seed}`).toBe(
+          'e1g1h1f1',
+        )
+        expect(moveUci(pickMove(parseFen(quiet), italian, options)!), `italy d${depth} seed ${seed}`).toBe('e1g1h1f1')
+      }
+    }
+    const mating = '6k1/8/8/8/8/8/8/R3K2R w KQ - 0 1'
+    const mate = pickMove(parseFen(mating), ordinary, {
+      budgetMs: hard.budgetMs,
+      maxDepth: 4,
+      jitter: hard.jitter,
+      seed: 1,
+    })
+    expect(moveUci(mate!)).toBe('a1a7')
+    expect(mate?.castle).toBeFalsy()
+  })
+
   it('does not walk the king out on the first move of queen’s chess', () => {
     const rules = resolveRules(eraById('queen'))
     const pos = parseFen(startFen(rules))

@@ -264,6 +264,8 @@ h1, h2, h3 { font-family: Fraunces, Palatino, serif; font-weight: 600; letter-sp
 .float-piece { position: absolute; display: grid; place-items: center; pointer-events: none; }
 .float-piece.animating { transition: left 180ms ease, top 180ms ease; z-index: 3; }
 .preview-caption, .mini-badge { margin: 0.55rem 0 0; color: #cbbba4; font-size: 0.88rem; }
+.ghost-reading { display: block; }
+.ghost-reading + .ghost-reading { margin-top: 0.35rem; }
 
 .mark-last { position: absolute; inset: 0; background: rgba(216, 176, 96, 0.28); }
 .mark-selected { position: absolute; inset: 6%; border: 2px solid var(--brass-2); border-radius: 4px; }

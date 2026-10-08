@@ -272,12 +272,14 @@ export function openSharedLink(search: string, now = 0): { session: Session | nu
     seed: now || 1,
     boardStill: link.boardStill,
   })
-  for (const uci of link.moves) {
+  for (let i = 0; i < link.moves.length; i++) {
+    const uci = link.moves[i]
     const move = legalMoves(current.pos, current.rules).find((item) => moveUci(item) === uci)
     if (!move) {
+      const ply = i + 1
       const notice = looksLikeMove(uci)
-        ? `“${uci}” is not legal on this board. Those moves were not played.`
-        : `“${uci}” is not a move. Those moves were not played.`
+        ? `“${uci}” is not legal on this board. That was move ${ply}. Those moves were not played.`
+        : `“${uci}” is not a move. That was move ${ply}. Those moves were not played.`
       return { session: null, notice }
     }
     current = commitMove(current, move, now)

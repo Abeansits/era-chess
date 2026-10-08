@@ -3,7 +3,8 @@ import { parseFen } from '../engine/position'
 import { REASONS } from './reasons'
 import { eraById, resolveRules } from './eras'
 import { boardLines } from './describe'
-import { playArrow, walkLine } from './stripPlay'
+import { ghostLine, ghostRefusals, playArrow, sequenceCaption, walkLine } from './stripPlay'
+import { stripFor } from './strips'
 import { ARRIVAL } from '../ui/arrival'
 
 const PASSING = '4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 1'
@@ -84,7 +85,37 @@ describe('playable strips', () => {
     expect(fide[7].title).toContain('The same position three times. Drawn.')
     expect(earlier[7].done).toBe(false)
     expect(earlier[7].title.toLowerCase()).not.toContain('drawn')
+    const playsOn = 'The same position can return. Play on.'
+    const kept = sequenceCaption(earlier[7].title, earlier[7].done, true, playsOn)
+    expect(kept).toBe(`${earlier[7].title}. ${playsOn}`)
+    expect(kept.toLowerCase()).not.toContain('drawn')
+    expect(sequenceCaption(earlier[0].title, earlier[0].done, false, playsOn)).toBe(earlier[0].title)
+    expect(sequenceCaption(fide[7].title, fide[7].done, true, 'The third time, the game is drawn. No claim to make.')).toBe(
+      fide[7].title,
+    )
     expect(fide.slice(0, 7).every((step) => !step.done)).toBe(true)
+  })
+
+  it('gives every ghost arrow its own refusal before a tap', () => {
+    const queen = stripFor('queen')
+    const medieval = ghostRefusals(queen.left.rules, queen.left.fen, queen.arrows)
+    expect(medieval.map((ghost) => ghost.from + ghost.to)).toEqual(['d1d8', 'e2e4'])
+    expect(medieval[0].reason).toBe(REASONS.ferzSlide)
+    expect(medieval[1].reason).toBe(REASONS.pawnDoubleEarly)
+    expect(medieval.map(ghostLine).join(' ')).not.toContain('Tap a ghost')
+
+    const ordinary = stripFor('castling', 'ordinary')
+    const ghosts = ghostRefusals(ordinary.left.rules, ordinary.left.fen, ordinary.arrows)
+    expect(ghosts.length).toBeGreaterThan(1)
+    expect(ghosts.map((ghost) => ghost.from + ghost.to)).toEqual(['e1a1', 'e1b1', 'e1h1'])
+    for (const ghost of ghosts) {
+      expect(ghost.reason).toBe(REASONS.ordinaryOnly)
+      expect(ghostLine(ghost)).toContain(`${ghost.from}–${ghost.to}`)
+      expect(ghostLine(ghost)).not.toContain('Tap a ghost')
+    }
+    const italy = stripFor('castling', 'italy1700')
+    const italianGhosts = ghostRefusals(italy.right.rules, italy.right.fen, italy.arrows)
+    expect(italianGhosts).toHaveLength(0)
   })
 
   it('saves the name passar battaglia for the Italy chip', () => {

@@ -1,5 +1,5 @@
 import { inCheck } from './attacks'
-import { countColor } from './position'
+import { countColor, kingCount } from './position'
 import { kindOf, opposite } from './squares'
 import type { GameResult, Position, Rules } from './types'
 import { legalMoves, makeMove, safeMoves } from './moves'
@@ -18,6 +18,7 @@ function insufficient(pos: Position): boolean {
 }
 
 export function outcome(pos: Position, rules: Rules, repeats = 1): GameResult | null {
+  if (kingCount(pos, 'w') !== 1 || kingCount(pos, 'b') !== 1) return null
   const me = countColor(pos, pos.turn)
   const them = countColor(pos, opposite(pos.turn))
   if (rules.bareKing && me === 1 && them === 1) return { winner: null, reason: 'mutual-bare' }

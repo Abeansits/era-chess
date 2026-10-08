@@ -72,6 +72,10 @@ Online play against a friend. Courier chess and the other 12×8 boards. Dice cha
 
 A `fen` this board cannot parse stays on the museum: “That position could not be read.” An illegal move, a token that is not a move, and a chip the stop does not have are named the same way, and that game is not opened. The FIDE clock pauses while the sheet is on an earlier ply, and starts again from the time that was left. End, Home, and any jump of more than one stop announce only the destination, once the slider is resting. A lit arrow is the era’s notation, with check or mate when there is one. The FIDE strip steps the rook until the third return of the position draws by itself; the tournament board plays the same line on. Play this position offers White, Black, or pass and play. When the engine plays a capture in passing, a castle, a free castle, or a bare king, that sentence sits under the move. With the board focused, left and right step the ply and mark it on the board.
 
+## Round 5
+
+A position with no king, or with two, is not checkmate. The museum stays up and says the position could not be read, the same sentence a broken fen already uses. Hard’s half-time cutoff is unchanged. At the root, a castle that the search scores within a fraction of a pawn of the best quiet move is the one it plays, and a free castle that puts the rook beside the king beats one that leaves the rook on the king’s square. A mate still outranks that. A strip with several ghost arrows shows each refusal before a tap. A refused share link names the ply, so the third `e2e4` is move 3. On the tournament half of the repetition strip, the last step keeps “The same position can return. Play on.” beside the move.
+
 ## Next
 
 A session is already a plain object with no React in it. The next piece of product is a server that relays that session to a second browser. After that, a closer look at the free-castling manuscripts that disagree with the geometry used here.

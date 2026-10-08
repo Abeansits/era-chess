@@ -47,6 +47,32 @@ export function playArrow(rules: Rules, fen: string, from: string, to: string): 
   return { legal: true, fen: toFen(next), title: playedTitle(pos, rules, move) }
 }
 
+export type GhostRefusal = { from: string; to: string; reason: string }
+
+/** Each illegal arrow, in order, with the refusal it would give on a tap. */
+export function ghostRefusals(
+  rules: Rules,
+  fen: string,
+  arrows: { from: string; to: string }[],
+): GhostRefusal[] {
+  const out: GhostRefusal[] = []
+  for (const arrow of arrows) {
+    const played = playArrow(rules, fen, arrow.from, arrow.to)
+    if (!played.legal) out.push({ from: arrow.from, to: arrow.to, reason: played.reason })
+  }
+  return out
+}
+
+export function ghostLine(ghost: GhostRefusal): string {
+  return `${ghost.from}–${ghost.to}. ${ghost.reason}`
+}
+
+/** After the last step, a stop that does not draw keeps its “play on” sentence beside the move. */
+export function sequenceCaption(title: string, done: boolean, atEnd: boolean, badge?: string): string {
+  if (atEnd && !done && badge) return `${title}. ${badge}`
+  return title
+}
+
 /** Step a scripted line. Repetition uses the positions actually visited. */
 export function walkLine(rules: Rules, fen: string, ucis: string[]): LineStep[] {
   let pos = parseFen(fen)

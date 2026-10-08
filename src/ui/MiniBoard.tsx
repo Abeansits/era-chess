@@ -4,7 +4,7 @@ import { outcome } from '../engine/outcome'
 import { moveUci, parseFen } from '../engine/position'
 import { colorOf, fileOf, kindOf, rankOf } from '../engine/squares'
 import type { Rules } from '../engine/types'
-import { playArrow, walkLine } from '../rules/stripPlay'
+import { ghostLine, ghostRefusals, playArrow, sequenceCaption, walkLine } from '../rules/stripPlay'
 import { resultTitle } from '../rules/describe'
 import { squareColors } from './boardColors'
 import { boardFrameStyle, boardTrackStyle, useEvenSquare } from './evenBoard'
@@ -60,6 +60,8 @@ export function MiniBoard({
   const diagram = parseFen(fen)
   const standing = positionResult ? outcome(diagram, rules) : null
   const sole = arrows.length === 1 ? playArrow(rules, fen, arrows[0].from, arrows[0].to) : null
+  const ghosts = !onSequence && arrows.length > 1 ? ghostRefusals(rules, fen, arrows) : []
+  const refusal = new Map(ghosts.map((ghost) => [`${ghost.from}${ghost.to}`, ghost.reason]))
 
   function tap(arrow: Arrow) {
     if (onSequence && upcoming && arrow.from === upcoming.from && arrow.to === upcoming.to) {
@@ -76,9 +78,10 @@ export function MiniBoard({
     setCaptionLine(played.reason)
   }
 
+  const atEnd = Boolean(steps && step === steps.length)
   const caption = onSequence
     ? step > 0
-      ? steps![step - 1].title
+      ? sequenceCaption(steps![step - 1].title, steps![step - 1].done, atEnd, badge)
       : (badge ?? 'Step the moves.')
     : (captionLine ??
       (badge
@@ -91,7 +94,14 @@ export function MiniBoard({
             ? sole.legal
               ? sole.title
               : sole.reason
-            : 'Tap a lit arrow to play it. Tap a ghost arrow to hear why not.'))
+            : null))
+  const ghostReadings =
+    caption === null
+      ? [
+          ...ghosts.map((ghost) => ({ id: `${ghost.from}${ghost.to}`, text: ghostLine(ghost) })),
+          ...(ghosts.length < arrows.length ? [{ id: 'lit', text: 'Tap a lit arrow to play it.' }] : []),
+        ]
+      : null
 
   return (
     <figure className={active ? 'mini is-active' : 'mini'}>
@@ -143,6 +153,7 @@ export function MiniBoard({
             </defs>
             {drawnArrows.map((arrow) => {
               const legal = onSequence || prefixLegal(rules, fen, arrow.from, arrow.to)
+              const why = refusal.get(arrow.from + arrow.to)
               const from = squareIndex(arrow.from)
               const to = squareIndex(arrow.to)
               const x1 = fileOf(from) + 0.5
@@ -165,7 +176,13 @@ export function MiniBoard({
                     className="arrow-hit"
                     role="button"
                     tabIndex={0}
-                    aria-label={legal ? `Play ${arrow.from} to ${arrow.to}` : `Try ${arrow.from} to ${arrow.to}`}
+                    aria-label={
+                      legal
+                        ? `Play ${arrow.from} to ${arrow.to}`
+                        : why
+                          ? `${arrow.from} to ${arrow.to}. ${why}`
+                          : `Try ${arrow.from} to ${arrow.to}`
+                    }
                     data-testid={`arrow-${marker}-${arrow.from}${arrow.to}`}
                     data-legal={legal ? 'yes' : 'no'}
                     onClick={() => tap(arrow)}
@@ -191,7 +208,13 @@ export function MiniBoard({
         </div>
       </div>
       <p className="mini-badge" data-testid={`strip-line-${marker}`} role="status">
-        {caption}
+        {ghostReadings && ghostReadings.length
+          ? ghostReadings.map((reading) => (
+              <span key={reading.id} className="ghost-reading" data-testid={`ghost-${marker}-${reading.id}`}>
+                {reading.text}
+              </span>
+            ))
+          : caption}
       </p>
       {(onSequence ? step > 0 : shown !== fen) ? (
         <button

@@ -52,7 +52,7 @@ export function parseFen(fen: string): Position {
     }
     if (file !== 8) throw new Error(`Bad FEN rank: ${ranks[r]}`)
   }
-  return {
+  const pos: Position = {
     board,
     turn: turnPart === 'b' ? 'b' : 'w',
     ep: epPart === '-' ? -1 : parseSq(epPart),
@@ -65,6 +65,8 @@ export function parseFen(fen: string): Position {
       bq: castlePart.includes('q'),
     },
   }
+  if (kingCount(pos, 'w') !== 1 || kingCount(pos, 'b') !== 1) throw new Error(`Bad FEN: ${fen}`)
+  return pos
 }
 
 export function toFen(pos: Position): string {
@@ -108,6 +110,13 @@ export function startFen(rules: Rules): string {
 
 export function positionKey(pos: Position): string {
   return `${pos.board.join('.')}|${pos.turn}|${pos.ep}|${pos.castle.wk ? 'K' : ''}${pos.castle.wq ? 'Q' : ''}${pos.castle.bk ? 'k' : ''}${pos.castle.bq ? 'q' : ''}`
+}
+
+export function kingCount(pos: Position, color: Color): number {
+  const king = codeOf('k', color)
+  let n = 0
+  for (const code of pos.board) if (code === king) n += 1
+  return n
 }
 
 export function countColor(pos: Position, color: Color): number {
