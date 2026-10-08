@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { legendFor } from '../engine/notation'
+import type { PieceKind } from '../engine/squares'
 import type { HistoryEntry } from '../game/session'
 import type { Rules } from '../engine/types'
+import { PieceWords } from './PieceWords'
 
 type Cell = { text: string; ply: number; note: string | null }
 
@@ -10,11 +12,17 @@ export function Scoresheet({
   rules,
   viewPly,
   onView,
+  named,
+  onHover,
+  onPick,
 }: {
   history: HistoryEntry[]
   rules: Rules
   viewPly: number | null
   onView: (ply: number | null) => void
+  named: PieceKind | null
+  onHover: (kind: PieceKind | null) => void
+  onPick: (kind: PieceKind) => void
 }) {
   const [secondary, setSecondary] = useState(false)
   const rows: { n: number; w?: Cell; b?: Cell }[] = []
@@ -74,14 +82,16 @@ export function Scoresheet({
             {rows.map((row) => (
               <li key={row.n}>
                 <span>{row.n}</span>
-                <MoveCell cell={row.w} viewPly={viewPly} onView={onView} />
-                <MoveCell cell={row.b} viewPly={viewPly} onView={onView} />
+                <MoveCell cell={row.w} viewPly={viewPly} onView={onView} named={named} onHover={onHover} onPick={onPick} />
+                <MoveCell cell={row.b} viewPly={viewPly} onView={onView} named={named} onHover={onHover} onPick={onPick} />
               </li>
             ))}
           </ol>
         </>
       )}
-      <p className="legend">{legendFor(rules.notation, secondary)}</p>
+      <p className="legend">
+        <PieceWords text={legendFor(rules.notation, secondary)} active={named} onHover={onHover} onPick={onPick} />
+      </p>
     </section>
   )
 }
@@ -90,22 +100,38 @@ function MoveCell({
   cell,
   viewPly,
   onView,
+  named,
+  onHover,
+  onPick,
 }: {
   cell?: Cell
   viewPly: number | null
   onView: (ply: number | null) => void
+  named: PieceKind | null
+  onHover: (kind: PieceKind | null) => void
+  onPick: (kind: PieceKind) => void
 }) {
   if (!cell) return <span />
   const selected = viewPly === cell.ply + 1
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       className={selected ? 'sheet-move is-on' : 'sheet-move'}
       data-testid={`sheet-ply-${cell.ply}`}
       onClick={() => onView(cell.ply + 1)}
+      onKeyDown={(event) => {
+        if (event.key !== 'Enter' && event.key !== ' ') return
+        event.preventDefault()
+        onView(cell.ply + 1)
+      }}
     >
       {cell.text}
-      {cell.note ? <span className="sheet-note">{cell.note}</span> : null}
-    </button>
+      {cell.note ? (
+        <span className="sheet-note">
+          <PieceWords text={cell.note} active={named} onHover={onHover} onPick={onPick} />
+        </span>
+      ) : null}
+    </div>
   )
 }

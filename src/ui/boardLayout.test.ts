@@ -11,4 +11,8 @@ describe('board geometry', () => {
     expect(css).toMatch(/\.board-grid\s*\{[^}]*position:\s*absolute/)
     expect(css).toMatch(/\.mini-board\s*\{[^}]*aspect-ratio:\s*1\s*\/\s*1/)
   })
+
+  it('keeps a finger on the board from scrolling the page', () => {
+    expect(css).toMatch(/\.play-board-wrap,\s*\n\.board-aspect,\s*\n\.board-grid,\s*\n\.sq,\s*\n\.mini-board,\s*\n\.mini-sq\s*\{[^}]*touch-action:\s*none/)
+  })
 })

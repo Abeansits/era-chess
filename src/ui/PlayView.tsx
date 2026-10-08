@@ -9,6 +9,7 @@ import { levelById } from '../engine/levels'
 import { agreeDraw, attemptDrop, commitMove, createSession, pauseClock, positionAt, resign, resigningSide, resumeClock, shareLink, tick, type Session } from '../game/session'
 import { activeChip, eraById } from '../rules/eras'
 import { resultTitle } from '../rules/describe'
+import { PieceWords } from './PieceWords'
 import { PieceGlyph } from './pieces'
 import { PlayBoard } from './PlayBoard'
 import { RuleCard } from './RuleCard'
@@ -47,6 +48,9 @@ export function PlayView({
   const [confirmDraw, setConfirmDraw] = useState(false)
   const [shareNote, setShareNote] = useState<string | null>(null)
   const [viewPly, setViewPly] = useState<number | null>(null)
+  const [lockedKind, setLockedKind] = useState<PieceKind | null>(null)
+  const [hoverKind, setHoverKind] = useState<PieceKind | null>(null)
+  const named = hoverKind ?? lockedKind
   const [trackedMoves, setTrackedMoves] = useState(session.history.length)
   if (trackedMoves !== session.history.length) {
     setTrackedMoves(session.history.length)
@@ -55,6 +59,7 @@ export function PlayView({
   const [now, setNow] = useState(() => Date.now())
   const thinkId = useRef(0)
   const era = eraById(session.eraId)
+  const pickKind = (kind: PieceKind) => setLockedKind((current) => (current === kind ? null : kind))
   const chip = activeChip(era, session.chipId)
   const collapsed = session.history.length >= 20 && !rulesOpen
   const browsing = viewPly !== null
@@ -299,7 +304,7 @@ export function PlayView({
           ) : null}
           {reason ? (
             <p className="reason reason-near" data-testid="illegal-reason" role="status">
-              {reason.text}
+              <PieceWords text={reason.text} active={named} onHover={setHoverKind} onPick={pickKind} />
             </p>
           ) : null}
           <PlayBoard
@@ -308,6 +313,7 @@ export function PlayView({
             orientation={orientation}
             lastMove={lastMove}
             disabled={browsing || Boolean(session.result) || thinking || !yourTurn}
+            namedKind={named}
             onDrop={(from, to) => drop(from, to)}
             onReason={(text, square) => setReason({ text, square })}
             reasonSquare={reason?.square ?? null}
@@ -343,6 +349,9 @@ export function PlayView({
               chip={chip}
               collapsed={collapsed}
               onExpand={() => setRulesOpen(true)}
+              named={named}
+              onHover={setHoverKind}
+              onPick={pickKind}
             />
             {!collapsed && session.history.length >= 20 ? (
               <button type="button" className="text-link" onClick={() => setRulesOpen(false)}>
@@ -351,7 +360,15 @@ export function PlayView({
             ) : null}
           </div>
         </div>
-        <Scoresheet history={session.history} rules={session.rules} viewPly={viewPly} onView={setViewPly} />
+        <Scoresheet
+          history={session.history}
+          rules={session.rules}
+          viewPly={viewPly}
+          onView={setViewPly}
+          named={named}
+          onHover={setHoverKind}
+          onPick={pickKind}
+        />
       </div>
 
       <Dialog

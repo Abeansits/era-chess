@@ -1,10 +1,19 @@
 import { useRef } from 'react'
+import type { PieceKind } from '../engine/squares'
 import { paletteAt } from './boardColors'
 import { boardFrameStyle, boardTrackStyle, useEvenSquare } from './evenBoard'
 import { PieceGlyph } from './pieces'
 import { morphCaption, previewPieces } from './previewLayout'
 
-export function PreviewBoard({ index, reduced }: { index: number; reduced: boolean }) {
+export function PreviewBoard({
+  index,
+  reduced,
+  namedKind,
+}: {
+  index: number
+  reduced: boolean
+  namedKind: PieceKind | null
+}) {
   const slotRef = useRef<HTMLDivElement>(null)
   const box = useEvenSquare(slotRef)
   const nearest = Math.round(Math.min(6, Math.max(0, index)))
@@ -28,7 +37,8 @@ export function PreviewBoard({ index, reduced }: { index: number; reduced: boole
           {pieces.map((piece) => (
             <div
               key={piece.id}
-              className="float-piece"
+              className={namedKind === piece.kind && piece.opacity > 0.35 ? 'float-piece is-named' : 'float-piece'}
+              data-kind={piece.kind}
               style={{
                 left: `${(piece.file / 8) * 100}%`,
                 top: `${((7 - piece.rank) / 8) * 100}%`,

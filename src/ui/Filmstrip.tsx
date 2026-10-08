@@ -1,6 +1,7 @@
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { eras } from '../rules/eras'
 import { blendSlot } from './blend'
+import { filmIndex, tickPercent } from './film'
 
 type Props = {
   index: number
@@ -11,21 +12,31 @@ type Props = {
 
 export function Filmstrip({ index, dragging, onPreview, onCommit }: Props) {
   const nearest = Math.round(Math.min(6, Math.max(0, index)))
-  const trackRef = useRef<HTMLDivElement>(null)
+  const axisRef = useRef<HTMLDivElement>(null)
+  const filmRef = useRef<HTMLDivElement>(null)
   const pointing = useRef(false)
   const clamped = Math.min(6, Math.max(0, index))
+  const shown = filmIndex(clamped, dragging)
   const slot = blendSlot(clamped)
-  const shown = eras[slot.at]
+  const caption = eras[slot.at]
+
+  useEffect(() => {
+    const el = filmRef.current
+    if (!el) return
+    const block = (event: TouchEvent) => event.preventDefault()
+    el.addEventListener('touchstart', block, { passive: false })
+    el.addEventListener('touchmove', block, { passive: false })
+    return () => {
+      el.removeEventListener('touchstart', block)
+      el.removeEventListener('touchmove', block)
+    }
+  }, [])
 
   function read(clientX: number) {
-    const rect = trackRef.current?.getBoundingClientRect()
+    const rect = axisRef.current?.getBoundingClientRect()
     if (!rect || rect.width === 0) return clamped
     const t = (clientX - rect.left) / rect.width
     return Math.min(6, Math.max(0, t * 6))
-  }
-
-  function place(value: number) {
-    return `${(value / 6) * 100}%`
   }
 
   function finish(clientX: number) {
@@ -37,23 +48,27 @@ export function Filmstrip({ index, dragging, onPreview, onCommit }: Props) {
   return (
     <div className="film-wrap">
       <div
+        ref={filmRef}
         className={dragging ? 'film is-dragging' : 'film'}
         data-testid="filmstrip"
-        data-index={clamped.toFixed(3)}
+        data-index={shown.toFixed(3)}
+        data-settled={dragging ? '0' : '1'}
         role="slider"
         tabIndex={0}
         aria-valuemin={0}
         aria-valuemax={6}
-        aria-valuenow={nearest}
-        aria-valuetext={`${eras[nearest].name}, ${eras[nearest].years}`}
+        aria-valuenow={Math.round(shown)}
+        aria-valuetext={`${eras[Math.round(shown)].name}, ${eras[Math.round(shown)].years}`}
         aria-label="Historical rules"
         onPointerDown={(event) => {
+          event.preventDefault()
           pointing.current = true
           event.currentTarget.setPointerCapture(event.pointerId)
           onPreview(read(event.clientX))
         }}
         onPointerMove={(event) => {
           if (!pointing.current) return
+          event.preventDefault()
           onPreview(read(event.clientX))
         }}
         onPointerUp={(event) => finish(event.clientX)}
@@ -79,22 +94,19 @@ export function Filmstrip({ index, dragging, onPreview, onCommit }: Props) {
       >
         <div className="sprockets" />
         <div className="film-body">
-          <div className="film-track" ref={trackRef}>
+          <div className="film-axis" ref={axisRef}>
             <div className="film-rail" />
-            <div className="film-head" style={{ left: place(clamped) }} />
+            <div className="film-head" style={{ left: `${tickPercent(shown)}%` }} />
             {eras.map((stop, i) => {
-              const weight = Math.max(0, 1 - Math.abs(clamped - i))
+              const weight = Math.max(0, 1 - Math.abs(shown - i))
               return (
                 <div
                   key={stop.id}
-                  className={
-                    i === nearest
-                      ? `film-stop is-on${i === 0 ? ' is-start' : ''}${i === eras.length - 1 ? ' is-end' : ''}`
-                      : `film-stop${i === 0 ? ' is-start' : ''}${i === eras.length - 1 ? ' is-end' : ''}`
-                  }
-                  style={{ left: place(i) }}
+                  className={i === Math.round(shown) ? 'film-stop is-on' : 'film-stop'}
+                  style={{ left: `${tickPercent(i)}%` }}
                   data-testid={`stop-${stop.id}`}
                 >
+                  <span className="film-tick" />
                   <span className="film-mark">{stop.mark}</span>
                   <span
                     className="film-name"
@@ -111,13 +123,6 @@ export function Filmstrip({ index, dragging, onPreview, onCommit }: Props) {
         </div>
         <div className="sprockets" />
       </div>
-      <ol className="film-legend" data-testid="stop-legend">
-        {eras.map((stop, i) => (
-          <li key={stop.id} className={i === nearest ? 'is-on' : undefined}>
-            {stop.short}
-          </li>
-        ))}
-      </ol>
       <p className="film-caption" data-blend-at={slot.at} data-blend-opacity={slot.opacity.toFixed(2)}>
         <span
           className="caption-slot"
@@ -126,9 +131,9 @@ export function Filmstrip({ index, dragging, onPreview, onCommit }: Props) {
             transform: `translateY(${slot.travel * 10}px)`,
           }}
         >
-          {shown.name}
+          {caption.name}
           <span className="dot"> · </span>
-          {shown.years}
+          {caption.years}
         </span>
       </p>
     </div>

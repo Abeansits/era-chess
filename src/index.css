@@ -71,24 +71,25 @@ h1, h2, h3 { font-family: Fraunces, Palatino, serif; font-weight: 600; letter-sp
     radial-gradient(circle at 12px 50%, #100e0c 4px, transparent 4.4px) 0 0 / 24px 16px repeat-x,
     #1a1612;
 }
-.film-body { position: relative; height: 92px; padding: 0 1.35rem; }
-.film-track { position: relative; height: 100%; touch-action: none; }
+.film-body { position: relative; height: 118px; padding: 0.4rem 0.55rem 0.35rem; }
+.film-axis { position: relative; height: 100%; margin: 0 2.2rem; touch-action: none; }
 .film-rail {
   position: absolute;
   left: 0;
   right: 0;
-  top: 46px;
+  top: 22px;
   height: 2px;
   background: #8a7352;
 }
 .film-head {
   position: absolute;
-  top: 8px;
-  bottom: 8px;
+  top: 0;
+  height: 28px;
   width: 2px;
   background: var(--brass-2);
   transform: translateX(-50%);
   z-index: 2;
+  pointer-events: none;
 }
 .film-head::before, .film-head::after {
   content: "";
@@ -103,42 +104,39 @@ h1, h2, h3 { font-family: Fraunces, Palatino, serif; font-weight: 600; letter-sp
 .film-head::after { bottom: -2px; }
 .film-stop {
   position: absolute;
-  top: 14px;
+  top: 18px;
   transform: translateX(-50%);
   text-align: center;
   width: max-content;
   z-index: 1;
   pointer-events: none;
 }
-.film-stop.is-start { transform: none; text-align: left; }
-.film-stop.is-end { transform: translateX(-100%); text-align: right; }
 .film-stop.is-on { z-index: 3; }
+.film-tick {
+  display: block;
+  width: 2px;
+  height: 10px;
+  margin: 0 auto;
+  background: #cbbba4;
+}
+.film-stop.is-on .film-tick { background: var(--brass-2); }
 .film-mark {
   display: block;
+  margin-top: 4px;
   font-size: 0.68rem;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.04em;
   color: #b5a48c;
+  white-space: nowrap;
 }
 .film-name {
   display: block;
-  margin-top: 28px;
+  margin-top: 1px;
   font-family: Fraunces, serif;
-  font-size: clamp(0.72rem, 1.5vw, 0.95rem);
+  font-size: 0.78rem;
   color: #e7dcc8;
+  white-space: nowrap;
 }
 .film-stop.is-on .film-name { color: var(--brass-2); }
-.film-legend {
-  display: none;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0.3rem 0.75rem;
-  list-style: none;
-  margin: 0.55rem 0 0;
-  padding: 0;
-  font-size: 0.78rem;
-  color: #cbbba4;
-}
-.film-legend .is-on { color: var(--brass-2); }
 .play-choices { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; }
 .already-result { margin: 0; font-size: 0.92rem; }
 .era-note { margin: 0.15rem 0 0.55rem; color: var(--brass-2); font-style: italic; }
@@ -214,6 +212,15 @@ h1, h2, h3 { font-family: Fraunces, Palatino, serif; font-weight: 600; letter-sp
 }
 
 .preview-frame, .play-board-wrap { width: min(100%, 640px); margin: 0 auto; }
+.play-board-wrap,
+.board-aspect,
+.board-grid,
+.sq,
+.mini-board,
+.mini-sq {
+  touch-action: none;
+  -webkit-user-drag: none;
+}
 .board-slot { width: 100%; }
 /* The frame is a true square. The grid is pinned to that square so piece
    art cannot stretch a rank. Rows and columns are equal fractions, and
@@ -290,11 +297,11 @@ h1, h2, h3 { font-family: Fraunces, Palatino, serif; font-weight: 600; letter-sp
   pointer-events: none;
 }
 .drag-ghost {
-  position: fixed;
-  width: 68px;
-  height: 68px;
-  transform: translate(-50%, -58%);
-  z-index: 30;
+  position: absolute;
+  width: 12.5%;
+  height: 12.5%;
+  transform: translate(-50%, -50%);
+  z-index: 4;
   pointer-events: none;
 }
 
@@ -331,6 +338,107 @@ h1, h2, h3 { font-family: Fraunces, Palatino, serif; font-weight: 600; letter-sp
   font-weight: 400;
   line-height: 1.45;
   color: #2b241c;
+}
+.piece-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.15rem 0.55rem;
+  list-style: none;
+  margin: 0.15rem 0 0.75rem;
+  padding: 0;
+}
+.piece-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.22rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 0.05rem 0.1rem;
+  cursor: pointer;
+  font-family: Fraunces, serif;
+  font-size: 0.92rem;
+}
+.piece-chip .piece-svg { width: 1.25rem; height: 1.25rem; }
+.piece-chip.is-on { background: rgba(176, 141, 87, 0.28); border-radius: 999px; }
+.piece-word {
+  border: 0;
+  background: transparent;
+  padding: 0 0.04em;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  border-bottom: 1px dotted rgba(90, 60, 24, 0.45);
+}
+.piece-word.is-on { background: rgba(176, 141, 87, 0.32); border-bottom-color: transparent; border-radius: 2px; }
+.piece-label {
+  margin: 0.45rem 0 0;
+  color: var(--brass-2);
+  font-family: Fraunces, serif;
+  font-style: italic;
+  font-size: 0.95rem;
+  line-height: 1.35;
+}
+.sq.is-named,
+.mini-sq.is-named { box-shadow: inset 0 0 0 3px #5c3b22, inset 0 0 0 6px var(--brass-2); }
+.float-piece.is-named { z-index: 2; }
+.float-piece.is-named::after {
+  content: "";
+  position: absolute;
+  inset: 6%;
+  border: 2px solid #5c3b22;
+  box-shadow: 0 0 0 2px var(--brass-2);
+  border-radius: 8px;
+  pointer-events: none;
+}
+.play-board-wrap,
+.board-aspect,
+.sq,
+.mini,
+.mini-board,
+.piece-svg,
+.float-piece,
+.drag-ghost,
+.film,
+.film-stop,
+.film-name,
+.film-mark,
+button,
+.chip,
+.sheet-move,
+.promo,
+.piece-word,
+.piece-chip {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-user-drag: none;
+}
+.rule-card,
+.rule-card p,
+.rule-card li,
+.why,
+.colophon,
+.strip header p,
+.mast-line,
+.sheet .legend,
+.sheet-empty,
+.sheet-note,
+.coord-note,
+.preview-caption,
+.reason {
+  user-select: text;
+  -webkit-user-select: text;
+  -webkit-touch-callout: default;
+}
+.rule-card button,
+.piece-word,
+.piece-chip {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-user-drag: none;
 }
 .chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
 .chip, .chip-detail { font-size: 0.82rem; }
@@ -406,6 +514,7 @@ h1, h2, h3 { font-family: Fraunces, Palatino, serif; font-weight: 600; letter-sp
 .play-title strong { font-family: Fraunces, serif; font-size: 1.35rem; }
 .play-title span { color: #cbbba4; font-size: 0.82rem; }
 .play .rule-card { margin-top: 0.8rem; }
+.card-slot { position: relative; z-index: 1; }
 .turn-line { min-height: 1.4rem; margin: 0.3rem 0 0.45rem; color: var(--brass-2); }
 .clocks { display: flex; gap: 0.5rem; }
 .clock {
@@ -476,9 +585,12 @@ h1, h2, h3 { font-family: Fraunces, Palatino, serif; font-weight: 600; letter-sp
 @media (max-width: 860px) {
   .mast, .museum-grid, .play-grid, .strip-boards { display: block; }
   .mast-line { margin-top: 0.6rem; }
-  .museum-side, .sheet, .strip { margin-top: 1rem; }
-  .film-name { display: none; }
-  .film-legend { display: flex; }
+  .museum, .play { padding-left: 12px; padding-right: 12px; }
+  .film-body { padding-left: 8px; padding-right: 8px; }
+  .film-axis { margin-left: 20px; margin-right: 20px; }
+  .film-name, .film-mark { font-size: 0.62rem; letter-spacing: 0; }
+  .museum-side, .sheet, .strip { margin-top: 1rem; position: relative; z-index: 1; }
+  .card-slot { margin-top: 1.35rem; }
   .play-bar { align-items: flex-start; }
 }
 @media (prefers-reduced-motion: reduce) {

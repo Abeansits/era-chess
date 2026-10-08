@@ -4,6 +4,7 @@ import { legalMoves } from '../engine/moves'
 import { fileEdgeLabel } from '../engine/notation'
 import { fileOf, kindOf, colorOf, rankOf, sqName, type Color, type PieceKind } from '../engine/squares'
 import type { Move, Position, Rules } from '../engine/types'
+import { guideForKind, pieceLabel } from '../rules/pieceNames'
 import { REASONS } from '../rules/reasons'
 import { squareColors } from './boardColors'
 import { boardFrameStyle, boardTrackStyle, useEvenSquare } from './evenBoard'
@@ -15,11 +16,21 @@ type Props = {
   orientation: Color
   lastMove: Move | null
   disabled: boolean
+  namedKind: PieceKind | null
   onDrop: (from: number, to: number) => void
   onReason: (reason: string, square: number) => void
   reasonSquare: number | null
   onStep?: (delta: number) => void
   plyMark?: string | null
+}
+
+type Gesture = {
+  id: number
+  sq: number
+  ox: number
+  oy: number
+  moved: boolean
+  mode: 'select' | 'toggle' | 'aim'
 }
 
 export function PlayBoard({
@@ -28,6 +39,7 @@ export function PlayBoard({
   orientation,
   lastMove,
   disabled,
+  namedKind,
   onDrop,
   onReason,
   reasonSquare,
@@ -39,12 +51,23 @@ export function PlayBoard({
   const box = useEvenSquare(slotRef)
   const [selected, setSelected] = useState<number | null>(null)
   const [locked, setLocked] = useState<number | null>(null)
-  const [drag, setDrag] = useState<{ from: number; x: number; y: number; ox: number; oy: number } | null>(
-    null,
-  )
+  const [drag, setDrag] = useState<{ from: number; x: number; y: number } | null>(null)
   const [dragMoved, setDragMoved] = useState(false)
   const skipClick = useRef(false)
+  const gesture = useRef<Gesture | null>(null)
   const [anim, setAnim] = useState<{ move: Move; phase: 'from' | 'to' } | null>(null)
+
+  useEffect(() => {
+    const el = boardRef.current
+    if (!el) return
+    const block = (event: TouchEvent) => event.preventDefault()
+    el.addEventListener('touchstart', block, { passive: false })
+    el.addEventListener('touchmove', block, { passive: false })
+    return () => {
+      el.removeEventListener('touchstart', block)
+      el.removeEventListener('touchmove', block)
+    }
+  }, [])
 
   useEffect(() => {
     setSelected(null)
@@ -69,6 +92,9 @@ export function PlayBoard({
   const colors = squareColors(rules.counselor === 'queen' ? 1 : 0)
   const moves = disabled ? [] : legalMoves(pos, rules)
   const targets = selected === null ? [] : moves.filter((move) => move.from === selected)
+  const selectedCode = selected === null ? 0 : pos.board[selected]
+  const selectedKind = selectedCode ? kindOf(selectedCode) : null
+  const guide = selectedKind ? guideForKind(rules, selectedKind) : undefined
 
   function squareAt(clientX: number, clientY: number): number | null {
     const rect = boardRef.current?.getBoundingClientRect()
@@ -88,6 +114,12 @@ export function PlayBoard({
       col: orientation === 'w' ? file : 7 - file,
       row: orientation === 'w' ? 7 - rank : rank,
     }
+  }
+
+  function localPoint(clientX: number, clientY: number): { x: number; y: number } {
+    const rect = boardRef.current?.getBoundingClientRect()
+    if (!rect) return { x: 0, y: 0 }
+    return { x: clientX - rect.left, y: clientY - rect.top }
   }
 
   function choose(sq: number) {
@@ -114,43 +146,83 @@ export function PlayBoard({
   }
 
   function pointerDown(event: PointerEvent<HTMLButtonElement>, sq: number) {
+    event.preventDefault()
+    event.currentTarget.setPointerCapture(event.pointerId)
     if (disabled) return
     const code = pos.board[sq]
-    if (!code || colorOf(code) !== pos.turn) return
-    if (rules.touchMove && locked !== null && locked !== sq) return
-    setDragMoved(false)
-    if (rules.touchMove && moves.some((move) => move.from === sq)) setLocked(sq)
-    setSelected(sq)
-    event.currentTarget.setPointerCapture(event.pointerId)
-    setDrag({ from: sq, x: event.clientX, y: event.clientY, ox: event.clientX, oy: event.clientY })
+    const own = Boolean(code && colorOf(code) === pos.turn)
+    const blocked = rules.touchMove && locked !== null && locked !== sq
+    if (own && !blocked) {
+      const was = selected === sq && !rules.touchMove
+      if (rules.touchMove && moves.some((move) => move.from === sq)) setLocked(sq)
+      setSelected(sq)
+      setDragMoved(false)
+      setDrag({ from: sq, x: event.clientX, y: event.clientY })
+      gesture.current = {
+        id: event.pointerId,
+        sq,
+        ox: event.clientX,
+        oy: event.clientY,
+        moved: false,
+        mode: was ? 'toggle' : 'select',
+      }
+      return
+    }
+    gesture.current = {
+      id: event.pointerId,
+      sq,
+      ox: event.clientX,
+      oy: event.clientY,
+      moved: false,
+      mode: 'aim',
+    }
   }
 
   function pointerMove(event: PointerEvent<HTMLButtonElement>) {
-    if (!drag) return
-    if (Math.hypot(event.clientX - drag.ox, event.clientY - drag.oy) > 6) setDragMoved(true)
-    setDrag({ ...drag, x: event.clientX, y: event.clientY })
+    const current = gesture.current
+    if (!current || current.id !== event.pointerId) return
+    event.preventDefault()
+    if (Math.hypot(event.clientX - current.ox, event.clientY - current.oy) > 8) {
+      current.moved = true
+      setDragMoved(true)
+    }
+    if (current.mode === 'aim') return
+    setDrag((prev) => (prev ? { ...prev, x: event.clientX, y: event.clientY } : prev))
   }
 
-  function pointerUp(event: PointerEvent<HTMLButtonElement>) {
-    if (!drag) return
-    const from = drag.from
-    const moved = dragMoved
+  function finishPointer(event: PointerEvent<HTMLButtonElement>, cancel: boolean) {
+    const current = gesture.current
+    if (!current || current.id !== event.pointerId) return
+    event.preventDefault()
+    gesture.current = null
+    skipClick.current = true
+    const moved = current.moved && !cancel
     setDrag(null)
     setDragMoved(false)
-    if (!moved) return
-    skipClick.current = true
-    const target = squareAt(event.clientX, event.clientY)
-    if (target === null || target === from) {
-      if (rules.touchMove && moves.some((move) => move.from === from)) onReason(REASONS.touchMove, from)
+    if (current.mode !== 'aim' && moved) {
+      const from = current.sq
+      const target = squareAt(event.clientX, event.clientY)
+      if (target === null || target === from) {
+        if (rules.touchMove && moves.some((move) => move.from === from)) onReason(REASONS.touchMove, from)
+        return
+      }
+      if (rules.touchMove) setLocked(from)
+      setSelected(from)
+      onDrop(from, target)
       return
     }
-    if (rules.touchMove) setLocked(from)
-    setSelected(from)
-    onDrop(from, target)
+    if (moved) return
+    if (current.mode === 'toggle') {
+      setSelected(null)
+      return
+    }
+    if (current.mode === 'select') return
+    choose(current.sq)
   }
 
   const kingSq = pos.board.findIndex((code) => code && kindOf(code) === 'k' && colorOf(code) === pos.turn)
   const checked = inCheck(pos, pos.turn)
+  const ghost = drag && dragMoved ? localPoint(drag.x, drag.y) : null
 
   return (
     <div
@@ -181,6 +253,7 @@ export function PlayBoard({
             const sq = rank * 8 + file
             const light = (file + rank) % 2 === 1
             const code = pos.board[sq]
+            const kind = code ? kindOf(code) : null
             const hide =
               (drag?.from === sq && dragMoved) ||
               (anim !== null && (anim.move.to === sq || anim.move.castle?.rookTo === sq))
@@ -191,11 +264,13 @@ export function PlayBoard({
                 lastMove.to === sq ||
                 lastMove.castle?.rookFrom === sq ||
                 lastMove.castle?.rookTo === sq)
+            const named = Boolean(kind && namedKind === kind)
             return (
               <button
                 key={sq}
                 type="button"
-                className="sq"
+                className={named ? 'sq is-named' : 'sq'}
+                data-kind={kind ?? undefined}
                 style={{ background: light ? colors.light : colors.dark }}
                 aria-label={labelFor(sq, code)}
                 onClick={() => {
@@ -207,14 +282,15 @@ export function PlayBoard({
                 }}
                 onPointerDown={(event) => pointerDown(event, sq)}
                 onPointerMove={pointerMove}
-                onPointerUp={pointerUp}
+                onPointerUp={(event) => finishPointer(event, false)}
+                onPointerCancel={(event) => finishPointer(event, true)}
               >
                 {last ? <span className="mark-last" /> : null}
                 {reasonSquare === sq ? <span className="mark-illegal" /> : null}
                 {checked && sq === kingSq ? <span className="mark-check" /> : null}
                 {selected === sq ? <span className="mark-selected" /> : null}
                 {target ? <span className={pos.board[sq] || target.enPassant ? 'mark-capture' : 'mark-dot'} /> : null}
-                {code && !hide ? <PieceGlyph kind={kindOf(code)!} color={colorOf(code)!} /> : null}
+                {code && !hide ? <PieceGlyph kind={kind!} color={colorOf(code)!} /> : null}
                 {file === (orientation === 'w' ? 0 : 7) ? (
                   <span className="coord rank">{rank + 1}</span>
                 ) : null}
@@ -227,17 +303,22 @@ export function PlayBoard({
             )
           })}
         </div>
-        {anim ? <AnimPiece pos={pos} move={anim.move} phase={anim.phase} place={place} /> : null}
+        {anim ? <AnimPiece pos={pos} move={anim.move} phase={anim.phase} place={place} namedKind={namedKind} /> : null}
+        {ghost && drag ? (
+          <div className="drag-ghost" style={{ left: ghost.x, top: ghost.y }}>
+            <PieceGlyph kind={kindOf(pos.board[drag.from])!} color={colorOf(pos.board[drag.from])!} />
+          </div>
+        ) : null}
       </div>
+      {guide ? (
+        <p className="piece-label" data-testid="piece-label">
+          {pieceLabel(guide)}
+        </p>
+      ) : null}
       {rules.notation !== 'algebraic' ? (
         <p className="coord-note" data-testid="coord-note">
           Sheet ranks count from the side who moved. Board numbers stay with White.
         </p>
-      ) : null}
-      {drag && dragMoved ? (
-        <div className="drag-ghost" style={{ left: drag.x, top: drag.y }}>
-          <PieceGlyph kind={kindOf(pos.board[drag.from])!} color={colorOf(pos.board[drag.from])!} />
-        </div>
       ) : null}
     </div>
   )
@@ -248,11 +329,13 @@ function AnimPiece({
   move,
   phase,
   place,
+  namedKind,
 }: {
   pos: Position
   move: Move
   phase: 'from' | 'to'
   place: (sq: number) => { col: number; row: number }
+  namedKind: PieceKind | null
 }) {
   const spots = [
     { from: move.from, to: move.to, code: pos.board[move.to] },
@@ -264,13 +347,15 @@ function AnimPiece({
     <>
       {spots.map((spot) => {
         const at = place(phase === 'from' ? spot.from : spot.to)
+        const kind = kindOf(spot.code)
+        const named = kind && namedKind === kind
         return (
           <div
             key={spot.from}
-            className="float-piece animating"
+            className={named ? 'float-piece animating is-named' : 'float-piece animating'}
             style={{ left: `${at.col * 12.5}%`, top: `${at.row * 12.5}%`, width: '12.5%', height: '12.5%' }}
           >
-            <PieceGlyph kind={kindOf(spot.code)!} color={colorOf(spot.code)!} />
+            <PieceGlyph kind={kind!} color={colorOf(spot.code)!} />
           </div>
         )
       })}

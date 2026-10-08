@@ -2,12 +2,13 @@ import { useRef, useState } from 'react'
 import { legalMoves } from '../engine/moves'
 import { outcome } from '../engine/outcome'
 import { moveUci, parseFen } from '../engine/position'
-import { colorOf, fileOf, kindOf, rankOf } from '../engine/squares'
+import { colorOf, fileOf, kindOf, rankOf, type PieceKind } from '../engine/squares'
 import type { Rules } from '../engine/types'
 import { ghostLine, ghostRefusals, playArrow, sequenceCaption, walkLine } from '../rules/stripPlay'
 import { resultTitle } from '../rules/describe'
 import { squareColors } from './boardColors'
 import { boardFrameStyle, boardTrackStyle, useEvenSquare } from './evenBoard'
+import { PieceWords } from './PieceWords'
 import { PieceGlyph } from './pieces'
 
 type Arrow = { from: string; to: string }
@@ -30,6 +31,9 @@ export function MiniBoard({
   positionResult,
   badge,
   line,
+  namedKind = null,
+  onHover,
+  onPick,
 }: {
   fen: string
   rules: Rules
@@ -40,6 +44,9 @@ export function MiniBoard({
   positionResult: boolean
   badge?: string
   line?: string[]
+  namedKind?: PieceKind | null
+  onHover?: (kind: PieceKind | null) => void
+  onPick?: (kind: PieceKind) => void
 }) {
   const slotRef = useRef<HTMLDivElement>(null)
   const box = useEvenSquare(slotRef)
@@ -120,9 +127,15 @@ export function MiniBoard({
             const sq = rank * 8 + file
             const light = (file + rank) % 2 === 1
             const code = pos.board[sq]
+            const kind = code ? kindOf(code) : null
+            const named = Boolean(kind && namedKind === kind)
             return (
-              <div key={sq} className="mini-sq" style={{ background: light ? colors.light : colors.dark }}>
-                {code ? <PieceGlyph kind={kindOf(code)!} color={colorOf(code)!} /> : null}
+              <div
+                key={sq}
+                className={named ? 'mini-sq is-named' : 'mini-sq'}
+                style={{ background: light ? colors.light : colors.dark }}
+              >
+                {code ? <PieceGlyph kind={kind!} color={colorOf(code)!} /> : null}
               </div>
             )
           })}
@@ -211,10 +224,18 @@ export function MiniBoard({
         {ghostReadings && ghostReadings.length
           ? ghostReadings.map((reading) => (
               <span key={reading.id} className="ghost-reading" data-testid={`ghost-${marker}-${reading.id}`}>
-                {reading.text}
+                {onHover && onPick ? (
+                  <PieceWords text={reading.text} active={namedKind ?? null} onHover={onHover} onPick={onPick} />
+                ) : (
+                  reading.text
+                )}
               </span>
             ))
-          : caption}
+          : caption && onHover && onPick ? (
+              <PieceWords text={caption} active={namedKind ?? null} onHover={onHover} onPick={onPick} />
+            ) : (
+              caption
+            )}
       </p>
       {(onSequence ? step > 0 : shown !== fen) ? (
         <button

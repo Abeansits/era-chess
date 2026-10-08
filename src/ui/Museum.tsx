@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Button } from '../components/ui/button'
 import { LEVELS, type Difficulty } from '../engine/levels'
 import { parseFen } from '../engine/position'
-import type { Color } from '../engine/squares'
+import type { Color, PieceKind } from '../engine/squares'
 import { activeChip, eras, resolveRules, type EraId } from '../rules/eras'
 import { stripFor } from '../rules/strips'
 import { arrivalCue } from './arrival'
@@ -11,6 +11,7 @@ import { Filmstrip } from './Filmstrip'
 import { leapOpacity } from './leap'
 import { LeapMorph } from './LeapMorph'
 import { MiniBoard } from './MiniBoard'
+import { PieceWords } from './PieceWords'
 import { PreviewBoard } from './PreviewBoard'
 import { RuleCard } from './RuleCard'
 
@@ -56,6 +57,15 @@ export function Museum({
   const leap = Math.min(1, Math.max(0, (x - 2) / 2))
   const leapShown = leapOpacity(x, reduced)
   const [toast, setToast] = useState<string | null>(null)
+  const [lockedKind, setLockedKind] = useState<PieceKind | null>(null)
+  const [hoverKind, setHoverKind] = useState<PieceKind | null>(null)
+  const [namedEra, setNamedEra] = useState(era.id)
+  if (namedEra !== era.id) {
+    setNamedEra(era.id)
+    setLockedKind(null)
+    setHoverKind(null)
+  }
+  const named = namedEra === era.id ? (hoverKind ?? lockedKind) : null
   const settled = useRef(nearest)
   useEffect(() => {
     const cue = arrivalCue(settled.current, x, dragging, dragging ? null : commitTarget)
@@ -85,9 +95,17 @@ export function Museum({
       ) : null}
       <LeapMorph t={leap} opacity={leapShown} />
       <div className="museum-grid">
-        <PreviewBoard index={x} reduced={reduced} />
+        <PreviewBoard index={x} reduced={reduced} namedKind={named} />
         <div className="museum-side">
-          <FadingCard index={x} chipId={chipId} reduced={reduced} onChip={onChip} />
+          <FadingCard
+            index={x}
+            chipId={chipId}
+            reduced={reduced}
+            onChip={onChip}
+            named={named}
+            onHover={setHoverKind}
+            onPick={(kind) => setLockedKind((current) => (current === kind ? null : kind))}
+          />
           <div className="start-row">
             <Button data-testid="start-pass" onClick={() => onStart('pass')}>
               Pass and play
@@ -153,7 +171,14 @@ export function Museum({
               </div>
             ) : null}
           </div>
-          <p>{strip.note}</p>
+          <p>
+            <PieceWords
+              text={strip.note}
+              active={named}
+              onHover={setHoverKind}
+              onPick={(kind) => setLockedKind((current) => (current === kind ? null : kind))}
+            />
+          </p>
         </header>
         <div className="strip-boards">
           <MiniBoard
@@ -167,6 +192,9 @@ export function Museum({
             positionResult={strip.positionResult}
             badge={strip.left.badge}
             line={strip.line}
+            namedKind={named}
+            onHover={setHoverKind}
+            onPick={(kind) => setLockedKind((current) => (current === kind ? null : kind))}
           />
           <MiniBoard
             key={`${strip.right.rules.id}:${strip.right.fen}`}
@@ -179,6 +207,9 @@ export function Museum({
             positionResult={strip.positionResult}
             badge={strip.right.badge}
             line={strip.line}
+            namedKind={named}
+            onHover={setHoverKind}
+            onPick={(kind) => setLockedKind((current) => (current === kind ? null : kind))}
           />
         </div>
       </section>
@@ -191,11 +222,17 @@ function FadingCard({
   chipId,
   reduced,
   onChip,
+  named,
+  onHover,
+  onPick,
 }: {
   index: number
   chipId: string
   reduced: boolean
   onChip: (id: string) => void
+  named: PieceKind | null
+  onHover: (kind: PieceKind | null) => void
+  onPick: (kind: PieceKind) => void
 }) {
   const x = Math.min(6, Math.max(0, index))
   const nearest = Math.round(x)
@@ -215,6 +252,9 @@ function FadingCard({
           rules={resolveRules(era, chipId)}
           chip={activeChip(era, chipId)}
           onChip={slot.opacity >= 0.5 ? onChip : undefined}
+          named={named}
+          onHover={onHover}
+          onPick={onPick}
         />
       </div>
     </div>
