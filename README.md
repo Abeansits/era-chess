@@ -18,7 +18,7 @@ The dev server is [http://127.0.0.1:4179/era-chess/](http://127.0.0.1:4179/era-c
 
 The public site is [https://abeansits.github.io/era-chess/](https://abeansits.github.io/era-chess/). A push to `main` runs the tests, builds, and deploys `dist/` with the official GitHub Pages actions.
 
-A stop can be opened directly: [https://abeansits.github.io/era-chess/?stop=shatranj](https://abeansits.github.io/era-chess/?stop=shatranj), and the same way for `queen`, `passant`, `castling`, `tournament`, `fide`, or `medieval`.
+A stop can be opened directly: [https://abeansits.github.io/era-chess/?stop=shatranj](https://abeansits.github.io/era-chess/?stop=shatranj), and the same way for `queen`, `passant`, `castling`, `tournament`, `fide`, or `medieval`. A region chip belongs in the same address, as `?stop=passant&chip=italy`. Dragging the strip updates that address. An unknown stop id is named on the page and the museum falls back to Shatranj.
 
 ## Play
 
