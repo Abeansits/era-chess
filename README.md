@@ -12,13 +12,15 @@ npm test
 npm run dev
 ```
 
-The dev server is [http://127.0.0.1:4179/era-chess/](http://127.0.0.1:4179/era-chess/).
+The dev server is [http://127.0.0.1:4179/](http://127.0.0.1:4179/).
 
-`npm run build` typechecks and writes a static site to `dist/`. The Vite base is `/era-chess/`, which is the path GitHub Pages uses for this repository. `npm run preview` serves the build on the same port, under that base.
+`npm run build` typechecks and writes a static site to `dist/`. The Vite base is `/`. `npm start` serves that build as a single-page app on `$PORT`.
 
-The public site is [https://abeansits.github.io/era-chess/](https://abeansits.github.io/era-chess/). A push to `main` runs the tests, builds, and deploys `dist/` with the official GitHub Pages actions.
+A stop can be opened directly: `/?stop=shatranj`, and the same way for `queen`, `passant`, `castling`, `tournament`, `fide`, or `medieval`. A region chip belongs in the same address, as `/?stop=passant&chip=italy`. Dragging the strip updates that address. An unknown stop id is named on the page and the museum falls back to Shatranj.
 
-A stop can be opened directly: [https://abeansits.github.io/era-chess/?stop=shatranj](https://abeansits.github.io/era-chess/?stop=shatranj), and the same way for `queen`, `passant`, `castling`, `tournament`, `fide`, or `medieval`. A region chip belongs in the same address, as `?stop=passant&chip=italy`. Dragging the strip updates that address. An unknown stop id is named on the page and the museum falls back to Shatranj.
+## Deploy on Railway
+
+Railway builds with `npm run build` and starts with `npm start`. That command is `serve -s dist`, listening on `$PORT`. Node 22 is pinned in `package.json` and `.nvmrc`. `railway.json` names those two commands. A shared game is a query on `/`, for example `/?stop=passant&chip=italy`.
 
 ## Play
 

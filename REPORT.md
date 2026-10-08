@@ -4,7 +4,7 @@ A static site. Drag the filmstrip, read the three lines that changed, and play t
 
 ## Stack
 
-Vite, React, and TypeScript, with Tailwind for the page. The dev server and the preview both bind to `127.0.0.1:4179`. Vitest covers the rules. The build is a static `dist/` with no server and no accounts.
+Vite, React, and TypeScript, with Tailwind for the page. The dev server and the preview both bind to `127.0.0.1:4179`. Vitest covers the rules. The build is a static `dist/` with no accounts. Production serves that directory on `$PORT` (`npm start`). The Vite base is `/`.
 
 React is here because the filmstrip, the morph, and the two play modes are one piece of UI state. The rules core does not import React. `src/game/session.ts` is the boundary a later online game can take as-is.
 
