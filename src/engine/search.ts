@@ -23,9 +23,14 @@ export type SearchOptions = {
   maxDepth?: number
   seed?: number
   hashes?: string[]
+  /** Centipawn window among root moves. 0 plays the single best. */
+  jitter?: number
 }
 
 class SearchTimeout extends Error {}
+
+type Flag = 'exact' | 'lower' | 'upper'
+type TTEntry = { depth: number; score: number; flag: Flag; from: number; to: number }
 
 function evaluate(pos: Position, rules: Rules): number {
   let score = 0
@@ -61,16 +66,15 @@ function evaluate(pos: Position, rules: Rules): number {
   return pos.turn === 'w' ? score : -score
 }
 
-function moveScore(pos: Position, move: Move): number {
-  let score = 0
-  if (move.promotion) score += 800 + VALUE[move.promotion]
-  if (isCapture(pos, move)) {
-    const victim = move.enPassant ? 'p' : kindOf(pos.board[move.to])
-    const attacker = kindOf(pos.board[move.from])
-    score += 400 + (victim ? VALUE[victim] : 0) - (attacker ? VALUE[attacker] / 10 : 0)
-  }
-  if (move.castle) score += 30
-  return score
+function victimValue(pos: Position, move: Move): number {
+  if (move.enPassant) return VALUE.p
+  const kind = kindOf(pos.board[move.to])
+  return kind ? VALUE[kind] : 0
+}
+
+function attackerValue(pos: Position, move: Move): number {
+  const kind = kindOf(pos.board[move.from])
+  return kind ? VALUE[kind] : 0
 }
 
 function terminal(pos: Position, rules: Rules, repeats: number, ply: number): number | null {
@@ -79,6 +83,36 @@ function terminal(pos: Position, rules: Rules, repeats: number, ply: number): nu
   if (!end.winner) return 0
   const sign = end.winner === pos.turn ? 1 : -1
   return sign * (MATE - ply)
+}
+
+function sameMove(move: Move, from: number, to: number): boolean {
+  return move.from === from && move.to === to
+}
+
+function orderMoves(
+  pos: Position,
+  moves: Move[],
+  ply: number,
+  hashFrom: number,
+  hashTo: number,
+  killers: Int32Array,
+  history: Int32Array,
+): Move[] {
+  return moves
+    .map((move) => {
+      let score = history[move.from * 64 + move.to]
+      if (hashFrom >= 0 && sameMove(move, hashFrom, hashTo)) score += 1_000_000
+      else if (isCapture(pos, move) || move.promotion) {
+        score += 100_000 + victimValue(pos, move) * 8 - attackerValue(pos, move) / 10
+        if (move.promotion) score += 400 + VALUE[move.promotion]
+      } else if (killers[ply * 2] === move.from * 64 + move.to || killers[ply * 2 + 1] === move.from * 64 + move.to) {
+        score += 40_000
+      }
+      if (move.castle) score += 20
+      return { move, score }
+    })
+    .sort((a, b) => b.score - a.score)
+    .map((entry) => entry.move)
 }
 
 function negamax(
@@ -90,27 +124,74 @@ function negamax(
   beta: number,
   seen: Map<string, number>,
   deadline: number,
+  tt: Map<string, TTEntry>,
+  killers: Int32Array,
+  history: Int32Array,
   qply = 0,
 ): number {
-  if (depth > 0 && ply > 0 && Date.now() > deadline) throw new SearchTimeout()
+  if (Date.now() > deadline) throw new SearchTimeout()
   const key = positionKey(pos)
   const repeats = seen.get(key) ?? 0
   const ended = terminal(pos, rules, repeats, ply)
   if (ended !== null) return ended
   if (depth <= 0) return quiesce(pos, rules, ply, alpha, beta, seen, deadline, qply)
 
-  const moves = legalMoves(pos, rules).sort((a, b) => moveScore(pos, b) - moveScore(pos, a))
+  const cached = tt.get(key)
+  let hashFrom = -1
+  let hashTo = -1
+  if (cached) {
+    hashFrom = cached.from
+    hashTo = cached.to
+    if (cached.depth >= depth && Math.abs(cached.score) < MATE - 400) {
+      if (cached.flag === 'exact') return cached.score
+      if (cached.flag === 'lower' && cached.score >= beta) return cached.score
+      if (cached.flag === 'upper' && cached.score <= alpha) return cached.score
+    }
+  }
+
+  const moves = orderMoves(pos, legalMoves(pos, rules), ply, hashFrom, hashTo, killers, history)
+  if (!moves.length) return 0
+  const alphaStart = alpha
   let best = -MATE
+  let bestFrom = moves[0].from
+  let bestTo = moves[0].to
+  let first = true
   for (const move of moves) {
     const next = makeMove(pos, rules, move)
     const nextKey = positionKey(next)
     seen.set(nextKey, (seen.get(nextKey) ?? 0) + 1)
-    const score = -negamax(next, rules, depth - 1, ply + 1, -beta, -alpha, seen, deadline)
+    let score: number
+    if (first) {
+      score = -negamax(next, rules, depth - 1, ply + 1, -beta, -alpha, seen, deadline, tt, killers, history)
+      first = false
+    } else {
+      score = -negamax(next, rules, depth - 1, ply + 1, -alpha - 1, -alpha, seen, deadline, tt, killers, history)
+      if (score > alpha && score < beta) {
+        score = -negamax(next, rules, depth - 1, ply + 1, -beta, -alpha, seen, deadline, tt, killers, history)
+      }
+    }
     seen.set(nextKey, (seen.get(nextKey) ?? 1) - 1)
-    if (score > best) best = score
+    if (score > best) {
+      best = score
+      bestFrom = move.from
+      bestTo = move.to
+    }
     if (score > alpha) alpha = score
-    if (alpha >= beta) break
+      if (alpha >= beta) {
+      if (!isCapture(pos, move) && !move.promotion) {
+        const packed = move.from * 64 + move.to
+        const slot = Math.min(ply, 127) * 2
+        if (killers[slot] !== packed) {
+          killers[slot + 1] = killers[slot]
+          killers[slot] = packed
+        }
+        history[packed] += depth * depth
+      }
+      break
+    }
   }
+  const flag: Flag = best <= alphaStart ? 'upper' : best >= beta ? 'lower' : 'exact'
+  if (Math.abs(best) < MATE - 400) tt.set(key, { depth, score: best, flag, from: bestFrom, to: bestTo })
   return best
 }
 
@@ -133,10 +214,10 @@ function quiesce(
     if (stand >= beta) return beta
     if (stand > alpha) alpha = stand
   }
-  if (qply >= 2) return checked ? alpha : Math.max(stand, alpha)
+  if (qply >= 4) return checked ? alpha : Math.max(stand, alpha)
   const moves = legalMoves(pos, rules)
     .filter((move) => checked || isCapture(pos, move) || move.promotion)
-    .sort((a, b) => moveScore(pos, b) - moveScore(pos, a))
+    .sort((a, b) => victimValue(pos, b) - victimValue(pos, a))
   for (const move of moves) {
     if (Date.now() > deadline) throw new SearchTimeout()
     const next = makeMove(pos, rules, move)
@@ -159,29 +240,38 @@ function rng(seed: number): () => number {
 }
 
 export function pickMove(pos: Position, rules: Rules, options: SearchOptions = {}): Move | null {
-  const moves = legalMoves(pos, rules).sort((a, b) => moveScore(pos, b) - moveScore(pos, a))
-  if (!moves.length) return null
-  if (moves.length === 1) return moves[0]
-  const maxDepth = options.maxDepth ?? 3
-  const deadline = Date.now() + (options.budgetMs ?? 700)
+  const generated = legalMoves(pos, rules)
+  if (!generated.length) return null
+  if (generated.length === 1) return generated[0]
+  const maxDepth = options.maxDepth ?? 4
+  const budget = options.budgetMs ?? 500
+  const started = Date.now()
+  const deadline = started + budget
   const seen = new Map<string, number>()
   for (const hash of options.hashes ?? [positionKey(pos)]) {
     seen.set(hash, (seen.get(hash) ?? 0) + 1)
   }
   if (!seen.has(positionKey(pos))) seen.set(positionKey(pos), 1)
 
+  const tt = new Map<string, TTEntry>()
+  const killers = new Int32Array(128 * 2)
+  const history = new Int32Array(64 * 64)
+  let moves = orderMoves(pos, generated, 0, -1, -1, killers, history)
   let best = moves[0]
   let completed: { move: Move; score: number }[] = []
+
   try {
     for (let depth = 1; depth <= maxDepth; depth++) {
+      if (depth > 1 && Date.now() > started + budget * 0.55) break
       let localBest = moves[0]
       let localScore = -MATE
       const ranked: { move: Move; score: number }[] = []
       for (const move of moves) {
+        if (Date.now() > deadline) throw new SearchTimeout()
         const next = makeMove(pos, rules, move)
         const nextKey = positionKey(next)
         seen.set(nextKey, (seen.get(nextKey) ?? 0) + 1)
-        const score = -negamax(next, rules, depth - 1, 1, -MATE, MATE, seen, deadline)
+        const score = -negamax(next, rules, depth - 1, 1, -MATE, MATE, seen, deadline, tt, killers, history)
         seen.set(nextKey, (seen.get(nextKey) ?? 1) - 1)
         ranked.push({ move, score })
         if (score > localScore) {
@@ -190,24 +280,18 @@ export function pickMove(pos: Position, rules: Rules, options: SearchOptions = {
         }
       }
       ranked.sort((a, b) => b.score - a.score)
-      moves.sort((a, b) => moveScore(pos, b) - moveScore(pos, a))
-      const top = ranked[0]?.move
-      if (top) {
-        const index = moves.indexOf(top)
-        if (index > 0) {
-          moves.splice(index, 1)
-          moves.unshift(top)
-        }
-      }
+      moves = ranked.map((entry) => entry.move)
       best = localBest
       completed = ranked
-      if (localScore > MATE - 50) break
+      if (localScore > MATE - 80) break
     }
   } catch (error) {
     if (!(error instanceof SearchTimeout)) throw error
   }
 
-  const pool = completed.filter((entry) => entry.score >= completed[0].score - 15)
+  if (!completed.length) return best
+  const window = options.jitter ?? 0
+  const pool = completed.filter((entry) => entry.score >= completed[0].score - window)
   if (pool.length <= 1) return best
   const random = rng(options.seed ?? 1)
   return pool[Math.floor(random() * pool.length)].move

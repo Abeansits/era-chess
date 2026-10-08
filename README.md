@@ -22,4 +22,4 @@ A stop can be opened directly: [https://abeansits.github.io/era-chess/?stop=shat
 
 ## Play
 
-Pass and play uses one device and turns the board toward the side to move. Play the engine keeps your color. Online play is not in this version. Game state lives in `src/game/session.ts`, with no React imports, so a later server can take the same session.
+Pass and play uses one device and turns the board toward the side to move. Play the engine keeps your color. Easy, Medium, and Hard are the same rules with a longer search; the search runs in a worker so the board stays responsive. Online play is not in this version. Game state lives in `src/game/session.ts`, with no React imports, so a later server can take the same session.

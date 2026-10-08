@@ -3,7 +3,8 @@ import { Button } from '../components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../components/ui/dialog'
 import { countColor } from '../engine/position'
 import { opposite, sqName, type Color, type PieceKind } from '../engine/squares'
-import { pickMove } from '../engine/search'
+import { requestMove } from '../engine/engineClient'
+import { levelById } from '../engine/levels'
 import { attemptDrop, commitMove, resign, tick, type Session } from '../game/session'
 import { activeChip, eraById } from '../rules/eras'
 import { resultTitle } from '../rules/describe'
@@ -73,29 +74,34 @@ export function PlayView({
     const id = ++thinkId.current
     setThinking(true)
     setEngineError(null)
-    const handle = window.setTimeout(() => {
-      if (thinkId.current !== id) return
-      try {
-        const move = pickMove(session.pos, session.rules, {
-          budgetMs: 480,
-          maxDepth: 3,
-          seed: session.history.length * 97 + 11,
-          hashes: session.hashes,
-        })
-        if (thinkId.current !== id) return
+    const job = requestMove({
+      pos: session.pos,
+      rules: session.rules,
+      difficulty: session.difficulty,
+      seed: session.history.length * 97 + 11,
+      hashes: session.hashes,
+    })
+    let cancelled = false
+    job.done
+      .then((move) => {
+        if (cancelled || thinkId.current !== id) return
         if (!move) {
           setEngineError('The engine has no legal move.')
+          setThinking(false)
           return
         }
+        setThinking(false)
         onSession(commitMove(session, move, Date.now()))
-      } catch {
-        if (thinkId.current === id) setEngineError('The engine stopped on this position.')
-      } finally {
-        if (thinkId.current === id) setThinking(false)
-      }
-    }, 50)
+      })
+      .catch(() => {
+        if (!cancelled && thinkId.current === id) {
+          setEngineError('The engine stopped on this position.')
+          setThinking(false)
+        }
+      })
     return () => {
-      window.clearTimeout(handle)
+      cancelled = true
+      job.cancel()
       thinkId.current += 1
     }
   }, [session, onSession])
@@ -173,15 +179,20 @@ export function PlayView({
               <Clock label="Black" ms={remaining('b')} live={session.pos.turn === 'b' && !session.result} />
             </div>
           ) : null}
-          <p className="turn-line" aria-live="polite">
-            {session.result
-              ? resultTitle(session.result)
-              : thinking
-                ? 'The engine is considering the position.'
+          {thinking && !session.result ? (
+            <p className="thinking" data-testid="thinking" role="status">
+              <span className="thinking-dot" />
+              Thinking · {levelById(session.difficulty).label}
+            </p>
+          ) : (
+            <p className="turn-line" aria-live="polite">
+              {session.result
+                ? resultTitle(session.result)
                 : yourTurn
                   ? `${turnName} to move`
                   : 'Waiting for the engine'}
-          </p>
+            </p>
+          )}
           <PlayBoard
             pos={session.pos}
             rules={session.rules}

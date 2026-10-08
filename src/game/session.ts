@@ -5,6 +5,7 @@ import { outcome } from '../engine/outcome'
 import { parseFen, positionKey, startFen } from '../engine/position'
 import { opposite, sqName, type Color, type PieceKind } from '../engine/squares'
 import type { GameResult, Move, Position, Rules } from '../engine/types'
+import type { Difficulty } from '../engine/levels'
 import { type EraId, resolveRules, eraById } from '../rules/eras'
 
 export type PlayMode = 'pass' | 'engine'
@@ -26,6 +27,7 @@ export type Session = {
   result: GameResult | null
   mode: PlayMode
   human: Color
+  difficulty: Difficulty
   clocks: { w: number; b: number } | null
   clockStamp: number | null
 }
@@ -43,6 +45,7 @@ export function createSession(input: {
   chipId?: string
   mode: PlayMode
   human?: Color
+  difficulty?: Difficulty
   now?: number
 }): Session {
   const era = eraById(input.eraId)
@@ -60,6 +63,7 @@ export function createSession(input: {
     result: outcome(pos, rules, 1),
     mode: input.mode,
     human: input.human ?? 'w',
+    difficulty: input.difficulty ?? 'medium',
     clocks: rules.clock ? { w: CLOCK_MS, b: CLOCK_MS } : null,
     clockStamp: rules.clock ? now : null,
   }

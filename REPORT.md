@@ -32,7 +32,7 @@ The rule card stays under the board until twenty plies (ten moves), then collaps
 
 Fairy-Stockfish was read, not vendored. The `ffish` JavaScript binding exposes a board: legal moves, FEN, and a result. It does not expose search. The variant file documents that flexible castling is unsupported. Built-in shatranj matches the array used here (king on the d-file, ferz on the e-file, alfil on the bishop’s squares) and treats a bare king and stalemate as losses, which this core also does.
 
-Because search is missing from that binding, and because Italian free castling cannot be written as a Stockfish variant, **every rule in the running app is this repository’s own code**: `src/engine` generates moves, detects the result, explains an illegal drop, and searches. The opponent is an alpha-beta search with a short time budget (iterative deepening, depth at most 3, about half a second on the main thread) and a little jitter among close moves. It is not Stockfish, and it will not play like Stockfish.
+Because search is missing from that binding, and because Italian free castling cannot be written as a Stockfish variant, **every rule in the running app is this repository’s own code**: `src/engine` generates moves, detects the result, explains an illegal drop, and searches. The opponent is that same search, run in a Web Worker: iterative deepening, transposition table, capture and killer ordering, and quiescence. Easy, Medium, and Hard change the time budget and how willing it is to pick a close second. It is not Stockfish. A full Fairy-Stockfish WASM binary was not added; it still cannot play free castling, so one engine covers every stop.
 
 Perft checks that are standard chess, where the rules coincide, are locked: queen’s chess (no castling, no en passant yet) is 20 and 400 at depths 1 and 2. FIDE is 20, 400, and 8902. Shatranj and medieval at the start are 16 (eight pawns, four knights, four alfil jumps).
 
@@ -69,4 +69,4 @@ Online play against a friend. Courier chess and the other 12×8 boards. Dice cha
 
 ## Next
 
-A session is already a plain object with no React in it. The next piece of product is a server that relays that session to a second browser. After that: a stronger opponent that does not run on the UI thread, and a closer look at the free-castling manuscripts that disagree with the geometry used here.
+A session is already a plain object with no React in it. The next piece of product is a server that relays that session to a second browser. After that, a closer look at the free-castling manuscripts that disagree with the geometry used here.

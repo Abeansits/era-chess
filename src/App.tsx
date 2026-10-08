@@ -1,9 +1,11 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import type { Difficulty } from './engine/levels'
 import type { Color } from './engine/squares'
 import { createSession, type PlayMode, type Session } from './game/session'
 import { eras, type EraId } from './rules/eras'
 import { Museum } from './ui/Museum'
 import { PlayView } from './ui/PlayView'
+import { useReducedMotion } from './ui/useReducedMotion'
 
 function initialIndex(): number {
   const stop = new URLSearchParams(window.location.search).get('stop')
@@ -16,14 +18,51 @@ export function App() {
   const [dragging, setDragging] = useState(false)
   const [chips, setChips] = useState<Partial<Record<EraId, string>>>({})
   const [human, setHuman] = useState<Color>('w')
+  const [difficulty, setDifficulty] = useState<Difficulty>('medium')
   const [session, setSession] = useState<Session | null>(null)
+  const reduced = useReducedMotion()
+  const indexRef = useRef(index)
+  const frame = useRef(0)
+
+  useEffect(() => {
+    indexRef.current = index
+  }, [index])
+
+  useEffect(() => () => cancelAnimationFrame(frame.current), [])
 
   const nearest = Math.round(Math.min(6, Math.max(0, index)))
   const era = eras[nearest]
   const chipId = chips[era.id] || era.defaultChip
-
   const screen = session ? 'play' : 'museum'
-  const year = useMemo(() => era.years, [era])
+
+  function preview(value: number) {
+    cancelAnimationFrame(frame.current)
+    indexRef.current = value
+    setDragging(true)
+    setIndex(value)
+  }
+
+  function commit(value: number) {
+    const target = Math.round(Math.min(6, Math.max(0, value)))
+    cancelAnimationFrame(frame.current)
+    setDragging(false)
+    const from = indexRef.current
+    if (reduced || Math.abs(target - from) < 0.01) {
+      indexRef.current = target
+      setIndex(target)
+      return
+    }
+    const start = performance.now()
+    const step = (now: number) => {
+      const u = Math.min(1, (now - start) / 320)
+      const eased = 1 - (1 - u) ** 3
+      const next = from + (target - from) * eased
+      indexRef.current = next
+      setIndex(next)
+      if (u < 1) frame.current = requestAnimationFrame(step)
+    }
+    frame.current = requestAnimationFrame(step)
+  }
 
   return (
     <div className="app">
@@ -34,7 +73,7 @@ export function App() {
         </div>
         <p className="mast-line">
           {screen === 'play'
-            ? `${era.name}, ${year}. The rule card stays with the board for the first ten moves.`
+            ? `${era.name}, ${era.years}. The rule card stays with the board for the first ten moves.`
             : 'Drag the century. Read the three lines that changed. Play that game.'}
         </p>
       </header>
@@ -46,16 +85,13 @@ export function App() {
           dragging={dragging}
           chipId={chipId}
           human={human}
-          onPreview={(value) => {
-            setDragging(true)
-            setIndex(value)
-          }}
-          onCommit={(value) => {
-            setDragging(false)
-            setIndex(value)
-          }}
+          difficulty={difficulty}
+          reduced={reduced}
+          onPreview={preview}
+          onCommit={commit}
           onChip={(id) => setChips((current) => ({ ...current, [era.id]: id }))}
           onHuman={setHuman}
+          onDifficulty={setDifficulty}
           onStart={(mode: PlayMode) => {
             setSession(
               createSession({
@@ -63,6 +99,7 @@ export function App() {
                 chipId,
                 mode,
                 human,
+                difficulty,
                 now: Date.now(),
               }),
             )
