@@ -1,3 +1,5 @@
+import { leapCaption } from './leap'
+
 type Props = { t: number; opacity: number }
 
 /** The king’s two-square leap tightening into a rook move. Visual only. */
@@ -34,13 +36,7 @@ export function LeapMorph({ t, opacity }: Props) {
           <path d="M1 4 h3.2 v3.2 h3.2 V4 h3.2 v3.2 H14 V4 h3" fill="none" stroke="#2a2118" />
         </g>
       </svg>
-      <figcaption>
-        {t < 0.35
-          ? 'The king’s leap, two squares and loose'
-          : t < 0.7
-            ? 'The leap shortens, and the rook comes along'
-            : 'Ordinary castling: king two squares, rook beside it'}
-      </figcaption>
+      <figcaption>{leapCaption(t)}</figcaption>
     </figure>
   )
 }

@@ -86,9 +86,9 @@ export function stripFor(eraId: EraId, chipId?: string): StripModel {
     const italy = resolveRules(era, 'italy')
     return {
       heading: 'The pawn that slipped past',
-      note: 'Black has just played d7–d5. Spain and England take it. Italy and Germany call that passar battaglia and will not.',
+      note: 'Black has just played d7–d5. Spain and England take it. Italy calls that passar battaglia and will not. Some German clubs played the Italian way after an 1822 translation; they did not share one code.',
       left: { label: 'Spain & England', sub: 'Capture in passing', fen: PASSING, rules: spain },
-      right: { label: 'Italy & Germany', sub: 'Passar battaglia', fen: PASSING, rules: italy },
+      right: { label: 'Italy', sub: 'Passar battaglia', fen: PASSING, rules: italy },
       arrows: [{ from: 'e5', to: 'd6' }],
       positionResult: false,
       active: (chipId || 'spain') === 'italy' ? 'right' : 'left',
@@ -99,7 +99,7 @@ export function stripFor(eraId: EraId, chipId?: string): StripModel {
     const italian = resolveRules(era, 'italy1700')
     return {
       heading: 'Where the king and the rook may land',
-      note: 'Ordinary castling has two squares. Italian free castling lets the king travel at least that far, up to the rook, and the rook finishes on the far side. The Italian chip is also passar battaglia.',
+      note: 'Ordinary castling has two squares and may give check. Italian free castling here is a reconstruction: the king travels at least two squares toward the rook. The check ban is attested. This board does not apply the stricter Modenese rule against landing on an attacked enemy. The Italian chip is also passar battaglia.',
       left: { label: 'Ordinary', sub: 'King two squares, rook beside it', fen: CASTLES, rules: ordinary },
       right: { label: 'Italy, 1700', sub: 'King and rook choose', fen: CASTLES, rules: italian },
       arrows: [
@@ -116,7 +116,7 @@ export function stripFor(eraId: EraId, chipId?: string): StripModel {
   if (eraId === 'tournament') {
     return {
       heading: 'Stalemate becomes a draw',
-      note: 'Black is not in check and has no move. Before the tournament code, this board still scores that as a win.',
+      note: 'Black is not in check and has no move. On this board, before the tournament stop, stalemate is still scored a win — a simplification of a messier regional habit. Staunton printed a draw in 1847.',
       left: {
         label: 'Before the code',
         sub: 'Stalemate wins',

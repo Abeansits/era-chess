@@ -158,5 +158,21 @@ export function notationPair(
 export const NOTATION_LEGEND: Record<Rules['notation'], string> = {
   shatranj: 'Files from the array: QR · QKt · QA · K · F · FA · FKt · FR. Ranks count from the side to move.',
   descriptive: 'English descriptive, as Staunton printed it. Ranks count from the side to move.',
-  algebraic: 'Modern algebraic. The descriptive sheet is the secondary view.',
+  algebraic: 'Modern algebraic. Files a–h, ranks 1–8 counted from White.',
+}
+
+/** The legend for the sheet on screen. Algebraic is not always the secondary view. */
+export function legendFor(notation: Rules['notation'], secondary: boolean): string {
+  const shown: Rules['notation'] = secondary
+    ? notation === 'algebraic'
+      ? 'descriptive'
+      : 'algebraic'
+    : notation
+  return NOTATION_LEGEND[shown]
+}
+
+/** File letters or names printed on the board edge. Ranks stay 1–8 from White. */
+export function fileEdgeLabel(file: number, notation: Rules['notation']): string {
+  if (notation === 'algebraic') return 'abcdefgh'[file] ?? ''
+  return (notation === 'shatranj' ? SHATRANJ_FILES : MODERN_FILES)[file] ?? ''
 }

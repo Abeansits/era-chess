@@ -18,9 +18,6 @@ function insufficient(pos: Position): boolean {
 }
 
 export function outcome(pos: Position, rules: Rules, repeats = 1): GameResult | null {
-  if (rules.repetition && repeats >= 3) return { winner: null, reason: 'repetition' }
-  if (rules.fiftyMove && pos.halfmove >= 100) return { winner: null, reason: 'fifty-move' }
-
   const me = countColor(pos, pos.turn)
   const them = countColor(pos, opposite(pos.turn))
   if (rules.bareKing && me === 1 && them === 1) return { winner: null, reason: 'mutual-bare' }
@@ -45,6 +42,8 @@ export function outcome(pos: Position, rules: Rules, repeats = 1): GameResult | 
     return { winner: null, reason: 'stalemate' }
   }
 
+  if (rules.repetition && repeats >= 3) return { winner: null, reason: 'repetition' }
+  if (rules.fiftyMove && pos.halfmove >= 100) return { winner: null, reason: 'fifty-move' }
   if (rules.insufficient && insufficient(pos)) return { winner: null, reason: 'insufficient' }
   return null
 }

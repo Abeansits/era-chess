@@ -5,7 +5,7 @@ import { countColor } from '../engine/position'
 import { opposite, sqName, type Color, type PieceKind } from '../engine/squares'
 import { requestMove } from '../engine/engineClient'
 import { levelById } from '../engine/levels'
-import { attemptDrop, commitMove, resign, tick, type Session } from '../game/session'
+import { agreeDraw, attemptDrop, commitMove, createSession, resign, resigningSide, tick, type Session } from '../game/session'
 import { activeChip, eraById } from '../rules/eras'
 import { resultTitle } from '../rules/describe'
 import { PieceGlyph } from './pieces'
@@ -33,7 +33,7 @@ export function PlayView({
   onSession: (session: Session) => void
   onLeave: () => void
 }) {
-  const [reason, setReason] = useState<string | null>(null)
+  const [reason, setReason] = useState<{ text: string; square: number } | null>(null)
   const [pending, setPending] = useState<
     | { kind: 'promotion'; from: number; to: number; pieces: PieceKind[] }
     | { kind: 'rook'; from: number; to: number; squares: number[] }
@@ -115,7 +115,7 @@ export function PlayView({
     }
     const attempt = attemptDrop(session, from, to, choice, Date.now())
     if (attempt.type === 'illegal') {
-      setReason(attempt.reason || 'That move is not legal in this era.')
+      setReason({ text: attempt.reason || 'That move is not legal in this era.', square: to })
       return
     }
     if (attempt.type === 'promotion') {
@@ -141,6 +141,8 @@ export function PlayView({
   const bareHint =
     session.rules.bareKing && countColor(session.pos, opposite(session.pos.turn)) === 2
   const turnName = session.pos.turn === 'w' ? 'White' : 'Black'
+  const resignSide = resigningSide(session)
+  const resignLabel = `${resignSide === 'w' ? 'White' : 'Black'} resigns`
   const yourTurn =
     session.mode === 'pass' || session.pos.turn === session.human
 
@@ -161,14 +163,41 @@ export function PlayView({
           <strong>{era.name}</strong>
           {chip ? <span>{chip.label}</span> : null}
         </div>
-        <Button
-          variant="quiet"
-          size="sm"
-          onClick={() => onSession(resign(session, session.mode === 'engine' ? session.human : session.pos.turn))}
-          disabled={Boolean(session.result)}
-        >
-          Resign
-        </Button>
+        <div className="play-actions">
+          {session.result ? (
+            <Button
+              size="sm"
+              data-testid="play-again"
+              onClick={() =>
+                onSession(
+                  createSession({
+                    eraId: session.eraId,
+                    chipId: session.chipId,
+                    mode: session.mode,
+                    human: session.human,
+                    difficulty: session.difficulty,
+                    now: Date.now(),
+                  }),
+                )
+              }
+            >
+              Play again
+            </Button>
+          ) : (
+            <Button variant="quiet" size="sm" data-testid="agree-draw" onClick={() => onSession(agreeDraw(session))}>
+              Agree a draw
+            </Button>
+          )}
+          <Button
+            variant="quiet"
+            size="sm"
+            data-testid="resign"
+            onClick={() => onSession(resign(session, resignSide))}
+            disabled={Boolean(session.result)}
+          >
+            {resignLabel}
+          </Button>
+        </div>
       </header>
 
       <div className="play-grid">
@@ -193,6 +222,11 @@ export function PlayView({
                   : 'Waiting for the engine'}
             </p>
           )}
+          {reason ? (
+            <p className="reason reason-near" data-testid="illegal-reason" role="status">
+              {reason.text}
+            </p>
+          ) : null}
           <PlayBoard
             pos={session.pos}
             rules={session.rules}
@@ -200,7 +234,8 @@ export function PlayView({
             lastMove={lastMove}
             disabled={Boolean(session.result) || thinking || !yourTurn}
             onDrop={(from, to) => drop(from, to)}
-            onReason={setReason}
+            onReason={(text, square) => setReason({ text, square })}
+            reasonSquare={reason?.square ?? null}
           />
           {pending?.kind === 'rook' ? (
             <div className="rook-choice" data-testid="rook-choice">
@@ -218,11 +253,6 @@ export function PlayView({
                 ))}
               </div>
             </div>
-          ) : null}
-          {reason ? (
-            <p className="reason" data-testid="illegal-reason" role="status">
-              {reason}
-            </p>
           ) : null}
           {engineError ? <p className="reason">{engineError}</p> : null}
           {bareHint && !session.result ? (

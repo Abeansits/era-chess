@@ -127,6 +127,26 @@ h1, h2, h3 { font-family: Fraunces, Palatino, serif; font-weight: 600; letter-sp
   color: #e7dcc8;
 }
 .film-stop.is-on .film-name { color: var(--brass-2); }
+.film-legend {
+  display: none;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.3rem 0.75rem;
+  list-style: none;
+  margin: 0.55rem 0 0;
+  padding: 0;
+  font-size: 0.78rem;
+  color: #cbbba4;
+}
+.film-legend .is-on { color: var(--brass-2); }
+.unknown-stop {
+  margin: 0 0 0.7rem;
+  padding: 0.65rem 0.85rem;
+  background: var(--paper);
+  color: var(--ink);
+  border-left: 4px solid var(--ghost);
+  border-radius: 0 12px 12px 0;
+}
 .film-caption {
   display: flex;
   gap: 0.5rem;
@@ -253,6 +273,14 @@ h1, h2, h3 { font-family: Fraunces, Palatino, serif; font-weight: 600; letter-sp
 .coord { position: absolute; font-size: 0.62rem; opacity: 0.55; pointer-events: none; }
 .coord.rank { top: 2px; left: 3px; }
 .coord.file { right: 3px; bottom: 1px; }
+.coord.file.long { font-size: 0.48rem; letter-spacing: -0.04em; right: 1px; }
+.coord-note { margin: 0.35rem 0 0; color: #cbbba4; font-size: 0.78rem; line-height: 1.35; }
+.mark-illegal {
+  position: absolute;
+  inset: 0;
+  box-shadow: inset 0 0 0 3px #9a3030;
+  pointer-events: none;
+}
 .drag-ghost {
   position: fixed;
   width: 68px;
@@ -341,7 +369,8 @@ h1, h2, h3 { font-family: Fraunces, Palatino, serif; font-weight: 600; letter-sp
 .arrow-lit { stroke: #f2c14e; stroke-width: 0.11; stroke-linecap: round; }
 .arrow-ghost { stroke: #f0d0cc; stroke-width: 0.08; stroke-dasharray: 0.16 0.1; opacity: 0.85; }
 
-.play-bar { display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; }
+.play-bar { display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+.play-actions { display: flex; flex-wrap: wrap; gap: 0.35rem; justify-content: flex-end; }
 .play-title { display: flex; flex-direction: column; align-items: center; }
 .play-title strong { font-family: Fraunces, serif; font-size: 1.35rem; }
 .play-title span { color: #cbbba4; font-size: 0.82rem; }
@@ -360,6 +389,7 @@ h1, h2, h3 { font-family: Fraunces, Palatino, serif; font-weight: 600; letter-sp
 }
 .clock.is-live { outline: 1px solid var(--brass); color: var(--paper); }
 .clock strong { font-variant-numeric: tabular-nums; font-family: Fraunces, serif; }
+.reason-near { margin: 0 0 0.55rem; }
 .reason {
   margin: 0.7rem 0 0;
   padding: 0.8rem 0.95rem;
@@ -417,7 +447,7 @@ h1, h2, h3 { font-family: Fraunces, Palatino, serif; font-weight: 600; letter-sp
   .mast-line { margin-top: 0.6rem; }
   .museum-side, .sheet, .strip { margin-top: 1rem; }
   .film-name { display: none; }
-  .film-stop.is-on .film-name { display: block; margin-top: 30px; }
+  .film-legend { display: flex; }
   .play-bar { align-items: flex-start; }
 }
 @media (prefers-reduced-motion: reduce) {

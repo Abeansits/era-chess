@@ -111,6 +111,13 @@ export function Filmstrip({ index, dragging, onPreview, onCommit }: Props) {
         </div>
         <div className="sprockets" />
       </div>
+      <ol className="film-legend" data-testid="stop-legend">
+        {eras.map((stop, i) => (
+          <li key={stop.id} className={i === nearest ? 'is-on' : undefined}>
+            {stop.short}
+          </li>
+        ))}
+      </ol>
       <p className="film-caption" data-blend-at={slot.at} data-blend-opacity={slot.opacity.toFixed(2)}>
         <span
           className="caption-slot"

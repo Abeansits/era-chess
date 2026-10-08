@@ -16,7 +16,7 @@ export function boardLines(rules: Rules): string[] {
       ? 'No castling.'
       : rules.castling === 'ordinary'
         ? 'Ordinary castling, on fixed squares.'
-        : 'Italian free castling. The move itself may not give check.'
+        : 'Italian free castling, a reconstruction. The move itself may not give check. This board does not apply the stricter Modenese rule against landing on a square that attacks an enemy man.'
   const promo =
     rules.promotion.join('') === 'f'
       ? 'Promotion to a ferz only.'
@@ -28,7 +28,7 @@ export function boardLines(rules: Rules): string[] {
     : rules.stalemate === 'unsettled'
       ? 'A bare king does not win. Stalemate is unsettled — scored a draw.'
       : rules.stalemate === 'win'
-        ? 'Stalemate is a win for the player who gives it.'
+        ? 'Stalemate is scored a win here, a simplification. England and France had already moved toward a draw, and Staunton printed a draw in 1847.'
         : rules.fiftyMove
           ? 'Stalemate is a draw. Fifty barren moves is a draw.'
           : 'Stalemate is a draw.'

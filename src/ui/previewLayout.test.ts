@@ -56,6 +56,19 @@ describe('preview morph', () => {
     expect(king.file).toBeLessThan(4)
   })
 
+  it('keeps the kingside knight on g and the rook on h', () => {
+    for (const id of ['shatranj', 'queen'] as const) {
+      const files = backRank(id)
+      expect(files.find((piece) => piece.file === 6)?.kind).toBe('n')
+      expect(files.find((piece) => piece.file === 7)?.kind).toBe('r')
+      expect(files.find((piece) => piece.file === 0)?.kind).toBe('r')
+      expect(files.find((piece) => piece.file === 1)?.kind).toBe('n')
+    }
+    const shown = previewPieces(2).filter((piece) => piece.color === 'w' && piece.rank === 0 && piece.opacity > 0.9)
+    expect(shown.find((piece) => piece.file === 6)?.kind).toBe('n')
+    expect(shown.find((piece) => piece.file === 7)?.kind).toBe('r')
+  })
+
   it('ends on the queen’s-chess array, queen on d and king on e', () => {
     const done = previewPieces(1)
     const files = done

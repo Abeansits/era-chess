@@ -155,6 +155,11 @@ export function commitMove(session: Session, move: Move, now = 0): Session {
   }
 }
 
+/** The side the Resign button gives up. Against the engine, that is the human. */
+export function resigningSide(session: Session): Color {
+  return session.mode === 'engine' ? session.human : session.pos.turn
+}
+
 export function resign(session: Session, color: Color): Session {
   if (session.result) return session
   return {

@@ -5,6 +5,7 @@ import { activeChip, eras, resolveRules, type EraId } from '../rules/eras'
 import { stripFor } from '../rules/strips'
 import { blendSlot } from './blend'
 import { Filmstrip } from './Filmstrip'
+import { leapOpacity } from './leap'
 import { LeapMorph } from './LeapMorph'
 import { MiniBoard } from './MiniBoard'
 import { PreviewBoard } from './PreviewBoard'
@@ -23,6 +24,7 @@ export function Museum({
   onHuman,
   onDifficulty,
   onStart,
+  unknownStop,
 }: {
   index: number
   dragging: boolean
@@ -36,28 +38,24 @@ export function Museum({
   onHuman: (color: Color) => void
   onDifficulty: (level: Difficulty) => void
   onStart: (mode: 'pass' | 'engine') => void
+  unknownStop: string | null
 }) {
   const x = Math.min(6, Math.max(0, index))
   const nearest = Math.round(x)
   const era = eras[nearest]
   const strip = stripFor(era.id as EraId, chipId)
   const leap = Math.min(1, Math.max(0, (x - 2) / 2))
-  const leapOpacity = reduced
-    ? nearest === 3 || nearest === 4
-      ? 1
-      : 0
-    : x <= 1.65 || x >= 4.35
-      ? 0
-      : x < 2.05
-        ? (x - 1.65) / 0.4
-        : x > 3.95
-          ? (4.35 - x) / 0.4
-          : 1
+  const leapShown = leapOpacity(x, reduced)
 
   return (
     <main className="museum">
+      {unknownStop ? (
+        <p className="unknown-stop" data-testid="unknown-stop" role="status">
+          No stop named “{unknownStop}”. Showing Shatranj.
+        </p>
+      ) : null}
       <Filmstrip index={x} dragging={dragging} onPreview={onPreview} onCommit={onCommit} />
-      <LeapMorph t={reduced ? (nearest >= 4 ? 1 : 0) : leap} opacity={leapOpacity} />
+      <LeapMorph t={leap} opacity={leapShown} />
       <div className="museum-grid">
         <PreviewBoard index={x} reduced={reduced} />
         <div className="museum-side">

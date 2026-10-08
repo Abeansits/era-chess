@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type PointerEvent } from 'react'
 import { inCheck } from '../engine/attacks'
 import { legalMoves } from '../engine/moves'
+import { fileEdgeLabel } from '../engine/notation'
 import { fileOf, kindOf, colorOf, rankOf, sqName, type Color, type PieceKind } from '../engine/squares'
 import type { Move, Position, Rules } from '../engine/types'
 import { REASONS } from '../rules/reasons'
@@ -15,10 +16,11 @@ type Props = {
   lastMove: Move | null
   disabled: boolean
   onDrop: (from: number, to: number) => void
-  onReason: (reason: string) => void
+  onReason: (reason: string, square: number) => void
+  reasonSquare: number | null
 }
 
-export function PlayBoard({ pos, rules, orientation, lastMove, disabled, onDrop, onReason }: Props) {
+export function PlayBoard({ pos, rules, orientation, lastMove, disabled, onDrop, onReason, reasonSquare }: Props) {
   const slotRef = useRef<HTMLDivElement>(null)
   const boardRef = useRef<HTMLDivElement>(null)
   const box = useEvenSquare(slotRef)
@@ -89,7 +91,7 @@ export function PlayBoard({ pos, rules, orientation, lastMove, disabled, onDrop,
     }
     if (!code || colorOf(code) !== pos.turn) return
     if (rules.touchMove && locked !== null && locked !== sq) {
-      onReason(REASONS.touchMove)
+      onReason(REASONS.touchMove, sq)
       return
     }
     const can = moves.some((move) => move.from === sq)
@@ -126,7 +128,7 @@ export function PlayBoard({ pos, rules, orientation, lastMove, disabled, onDrop,
     skipClick.current = true
     const target = squareAt(event.clientX, event.clientY)
     if (target === null || target === from) {
-      if (rules.touchMove && moves.some((move) => move.from === from)) onReason(REASONS.touchMove)
+      if (rules.touchMove && moves.some((move) => move.from === from)) onReason(REASONS.touchMove, from)
       return
     }
     if (rules.touchMove) setLocked(from)
@@ -178,6 +180,7 @@ export function PlayBoard({ pos, rules, orientation, lastMove, disabled, onDrop,
                 onPointerUp={pointerUp}
               >
                 {last ? <span className="mark-last" /> : null}
+                {reasonSquare === sq ? <span className="mark-illegal" /> : null}
                 {checked && sq === kingSq ? <span className="mark-check" /> : null}
                 {selected === sq ? <span className="mark-selected" /> : null}
                 {target ? <span className={pos.board[sq] || target.enPassant ? 'mark-capture' : 'mark-dot'} /> : null}
@@ -186,7 +189,9 @@ export function PlayBoard({ pos, rules, orientation, lastMove, disabled, onDrop,
                   <span className="coord rank">{rank + 1}</span>
                 ) : null}
                 {rank === (orientation === 'w' ? 0 : 7) ? (
-                  <span className="coord file">{sqName(sq)[0]}</span>
+                  <span className={fileEdgeLabel(file, rules.notation).length > 1 ? 'coord file long' : 'coord file'}>
+                    {fileEdgeLabel(file, rules.notation)}
+                  </span>
                 ) : null}
               </button>
             )
@@ -194,6 +199,11 @@ export function PlayBoard({ pos, rules, orientation, lastMove, disabled, onDrop,
         </div>
         {anim ? <AnimPiece pos={pos} move={anim.move} phase={anim.phase} place={place} /> : null}
       </div>
+      {rules.notation !== 'algebraic' ? (
+        <p className="coord-note" data-testid="coord-note">
+          Sheet ranks count from the side who moved. Board numbers stay with White.
+        </p>
+      ) : null}
       {drag && dragMoved ? (
         <div className="drag-ghost" style={{ left: drag.x, top: drag.y }}>
           <PieceGlyph kind={kindOf(pos.board[drag.from])!} color={colorOf(pos.board[drag.from])!} />

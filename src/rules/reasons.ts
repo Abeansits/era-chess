@@ -7,6 +7,8 @@ export const REASONS = {
   pawnSideways: 'A pawn does not move sideways.',
   pawnBackward: 'A pawn does not retreat.',
   pawnQuietCapture: 'A pawn captures diagonally, not straight ahead.',
+  pawnDiagonal:
+    'A pawn captures diagonally, and only when an enemy piece stands there.',
   passar:
     'Passar battaglia: that pawn may jump, and it cannot be taken in passing.',
   noEnPassant:
@@ -21,7 +23,9 @@ export const REASONS = {
   ordinaryOnly:
     'Ordinary castling has fixed squares. The king moves two, and the rook comes to the square beside it.',
   castleMoved: 'The king or that rook has already moved, so castling is lost.',
-  castlePath: 'The king cannot cross or land on an attacked square to castle.',
+  castleOutOfCheck: 'You cannot castle out of check.',
+  castleThrough: 'The king cannot cross an attacked square.',
+  castleLand: 'The king cannot land on an attacked square.',
   castleGivesCheck: 'Italian free castling may not itself give check.',
   castleFree:
     'Free castling stays on the home rank, between the king and that rook, with the king moving at least two squares.',

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { NOTATION_LEGEND } from '../engine/notation'
+import { legendFor } from '../engine/notation'
 import type { HistoryEntry } from '../game/session'
 import type { Rules } from '../engine/types'
 
@@ -34,7 +34,7 @@ export function Scoresheet({ history, rules }: { history: HistoryEntry[]; rules:
           ))}
         </ol>
       )}
-      <p className="legend">{secondary ? NOTATION_LEGEND.algebraic : NOTATION_LEGEND[rules.notation]}</p>
+      <p className="legend">{legendFor(rules.notation, secondary)}</p>
     </section>
   )
 }
