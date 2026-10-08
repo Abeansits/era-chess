@@ -80,10 +80,11 @@ export function PlayBoard({ pos, rules, orientation, lastMove, disabled, onDrop,
       if (!rules.touchMove) setLocked(null)
       return
     }
-    if (!code || colorOf(code) !== pos.turn) {
-      if (selected !== null && !rules.touchMove) setSelected(null)
+    if (selected !== null && (!code || colorOf(code) !== pos.turn)) {
+      onDrop(selected, sq)
       return
     }
+    if (!code || colorOf(code) !== pos.turn) return
     if (rules.touchMove && locked !== null && locked !== sq) {
       onReason(REASONS.touchMove)
       return
