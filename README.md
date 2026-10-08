@@ -12,11 +12,13 @@ npm test
 npm run dev
 ```
 
-The dev server is [http://127.0.0.1:4179](http://127.0.0.1:4179).
+The dev server is [http://127.0.0.1:4179/era-chess/](http://127.0.0.1:4179/era-chess/).
 
-`npm run build` typechecks and writes a static site to `dist/`. Serve that folder with any static host. `npm run preview` serves the build on the same port.
+`npm run build` typechecks and writes a static site to `dist/`. The Vite base is `/era-chess/`, which is the path GitHub Pages uses for this repository. `npm run preview` serves the build on the same port, under that base.
 
-A stop can be opened directly: `/?stop=shatranj`, `queen`, `passant`, `castling`, `tournament`, `fide`, or `medieval`.
+The public site is [https://abeansits.github.io/era-chess/](https://abeansits.github.io/era-chess/). A push to `main` runs the tests, builds, and deploys `dist/` with the official GitHub Pages actions.
+
+A stop can be opened directly: [https://abeansits.github.io/era-chess/?stop=shatranj](https://abeansits.github.io/era-chess/?stop=shatranj), and the same way for `queen`, `passant`, `castling`, `tournament`, `fide`, or `medieval`.
 
 ## Play
 
