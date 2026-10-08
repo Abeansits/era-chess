@@ -366,8 +366,31 @@ h1, h2, h3 { font-family: Fraunces, Palatino, serif; font-weight: 600; letter-sp
   overflow: hidden;
 }
 .arrow-layer { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
-.arrow-lit { stroke: #f2c14e; stroke-width: 0.11; stroke-linecap: round; }
-.arrow-ghost { stroke: #f0d0cc; stroke-width: 0.08; stroke-dasharray: 0.16 0.1; opacity: 0.85; }
+.arrow-hit { stroke: transparent; stroke-width: 0.72; pointer-events: stroke; cursor: pointer; }
+.arrow-lit { stroke: #f2c14e; stroke-width: 0.11; stroke-linecap: round; pointer-events: none; }
+.arrow-ghost { stroke: #f0d0cc; stroke-width: 0.08; stroke-dasharray: 0.16 0.1; opacity: 0.85; pointer-events: none; }
+.strip-head { display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+.arrival {
+  margin: 0.35rem 0 0;
+  text-align: center;
+  color: var(--brass-2);
+  font-family: Fraunces, serif;
+  font-style: italic;
+}
+.share-note { margin: 0.2rem 0 0.4rem; color: var(--brass-2); font-size: 0.85rem; word-break: break-all; }
+.sheet-nav { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-top: 0.55rem; }
+.sheet-nav button, .sheet-move {
+  background: none;
+  border: 0;
+  color: #e7dcc8;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+.sheet-nav button { color: var(--brass-2); text-decoration: underline; font-size: 0.82rem; }
+.sheet-nav button:disabled { opacity: 0.35; cursor: default; text-decoration: none; }
+.sheet-move { padding: 0.05rem 0.15rem; border-radius: 6px; }
+.sheet-move.is-on { background: rgba(228, 200, 138, 0.2); color: var(--brass-2); }
 
 .play-bar { display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
 .play-actions { display: flex; flex-wrap: wrap; gap: 0.35rem; justify-content: flex-end; }

@@ -12,25 +12,35 @@ describe('release ease', () => {
 })
 
 describe('one block of text', () => {
-  it('fades the outgoing copy out, then the incoming copy in', () => {
-    expect(blendSlot(2)).toEqual({ at: 2, opacity: 1, entering: false })
-    expect(blendSlot(2.25)).toEqual({ at: 2, opacity: 0.5, entering: false })
-    expect(blendSlot(2.5).opacity).toBe(0)
-    expect(blendSlot(2.5).at).toBe(2)
-    expect(blendSlot(2.75)).toEqual({ at: 3, opacity: 0.5, entering: true })
-    expect(blendSlot(6)).toEqual({ at: 6, opacity: 1, entering: false })
+  it('holds the card, then cross-slides without going blank', () => {
+    expect(blendSlot(2)).toMatchObject({ at: 2, opacity: 1, entering: false, travel: 0 })
+    expect(blendSlot(2.25)).toMatchObject({ at: 2, opacity: 1, travel: 0 })
+    const mid = blendSlot(2.5)
+    expect(mid.at).toBe(2)
+    expect(mid.opacity).toBeGreaterThanOrEqual(0.7)
+    expect(mid.travel).toBeLessThan(0)
+    const incoming = blendSlot(2.51)
+    expect(incoming.at).toBe(3)
+    expect(incoming.entering).toBe(true)
+    expect(incoming.opacity).toBeGreaterThanOrEqual(0.7)
+    expect(incoming.travel).toBeGreaterThan(0)
+    expect(blendSlot(2.75)).toMatchObject({ at: 3, opacity: 1, travel: 0 })
+    expect(blendSlot(6)).toMatchObject({ at: 6, opacity: 1, entering: false })
   })
 
-  it('changes the copy only while it is blank', () => {
+  it('keeps a single wording, and never an empty card', () => {
     let previous = blendSlot(0)
     for (let step = 1; step <= 600; step++) {
       const slot = blendSlot(step / 100)
-      if (slot.at !== previous.at) {
-        expect(previous.opacity).toBe(0)
-        expect(slot.opacity).toBeLessThan(0.05)
-      }
-      expect(slot.opacity).toBeGreaterThanOrEqual(0)
+      expect(slot.opacity).toBeGreaterThanOrEqual(0.7)
       expect(slot.opacity).toBeLessThanOrEqual(1)
+      if (slot.at !== previous.at) {
+        expect(slot.at).toBe(previous.at + 1)
+        expect(previous.entering).toBe(false)
+        expect(slot.entering).toBe(true)
+        expect(previous.travel).toBeLessThan(0)
+        expect(slot.travel).toBeGreaterThan(0)
+      }
       previous = slot
     }
   })

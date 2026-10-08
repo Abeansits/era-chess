@@ -48,22 +48,40 @@ function evaluate(pos: Position, rules: Rules): number {
     const rank = rankOf(sq)
     const file = fileOf(sq)
     const forward = whitePiece ? rank : 7 - rank
-    if (kind === 'p') value += forward * 8
-    if (kind === 'n' || kind === 'b' || kind === 'f' || kind === 'a') {
+    if (kind === 'p') value += forward * 6
+    if (kind === 'n' || kind === 'b') {
       const center = 4 - Math.abs(file - 3.5) - Math.abs(rank - 3.5)
-      value += center * 8
+      value += center * 6
     }
-    if (kind === 'k' && rules.counselor === 'queen') {
-      const home = whitePiece ? rank <= 1 : rank >= 6
-      if (home) value += 12
+    // Ferz and alfil are short. A little center is enough; they are not a queen or a bishop.
+    if (kind === 'f' || kind === 'a') {
+      const center = 4 - Math.abs(file - 3.5) - Math.abs(rank - 3.5)
+      value += center * (kind === 'f' ? 2 : 1)
     }
     score += whitePiece ? value : -value
   }
+  const crowded = white + black >= 24
+  score += kingPlace(pos, rules, 'w', crowded)
+  score -= kingPlace(pos, rules, 'b', crowded)
   if (rules.bareKing) {
-    if (black === 2) score += 50
-    if (white === 2) score -= 50
+    if (black <= 3 && white >= 2) score += (4 - black) * 90
+    if (white <= 3 && black >= 2) score -= (4 - white) * 90
   }
   return pos.turn === 'w' ? score : -score
+}
+
+function kingPlace(pos: Position, rules: Rules, color: 'w' | 'b', crowded: boolean): number {
+  const kingSq = pos.board.indexOf(color === 'w' ? 6 : 14)
+  if (kingSq < 0) return 0
+  const rank = rankOf(kingSq)
+  const file = fileOf(kingSq)
+  const home = color === 'w' ? 0 : 7
+  const rights = color === 'w' ? pos.castle.wk || pos.castle.wq : pos.castle.bk || pos.castle.bq
+  let value = 0
+  if (rank !== home && (crowded || rights)) value -= crowded ? 120 : 36
+  if (rules.castling !== 'none' && rank === home && (file === 2 || file === 6)) value += 80
+  if (rights && rank === home) value += 22
+  return value
 }
 
 function victimValue(pos: Position, move: Move): number {
@@ -108,7 +126,8 @@ function orderMoves(
       } else if (killers[ply * 2] === move.from * 64 + move.to || killers[ply * 2 + 1] === move.from * 64 + move.to) {
         score += 40_000
       }
-      if (move.castle) score += 20
+      if (move.castle) score += 180
+      if (move.enPassant) score += 80
       return { move, score }
     })
     .sort((a, b) => b.score - a.score)
@@ -229,6 +248,12 @@ function quiesce(
     if (score > alpha) alpha = score
   }
   return alpha
+}
+
+/** One seed per game, mixed with the ply. Not a function of the ply alone. */
+export function engineSeed(seed: number, ply: number): number {
+  const mixed = Math.imul((seed || 1) ^ (ply + 1), 0x45d9f3b)
+  return (mixed >>> 0) || 1
 }
 
 function rng(seed: number): () => number {

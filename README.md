@@ -22,4 +22,4 @@ A stop can be opened directly: [https://abeansits.github.io/era-chess/?stop=shat
 
 ## Play
 
-Pass and play uses one device and turns the board toward the side to move. Play the engine keeps your color. Easy, Medium, and Hard are the same rules with a longer search; the search runs in a worker so the board stays responsive. Online play is not in this version. Game state lives in `src/game/session.ts`, with no React imports, so a later server can take the same session.
+Pass and play uses one device. It turns the board toward the side to move, unless you keep White at the bottom. Play the engine keeps your color. Easy, Medium, and Hard are the same rules with a longer search; each game has its own seed, and the search runs in a worker so the board stays responsive. The strip under the card can be played: a lit arrow makes the move, a ghost arrow says why not. Agreeing a draw asks once before the game ends. Bare king and stalemate open as a game. Share copies a link to the stop, the chip, and the position. Online play is not in this version. Game state lives in `src/game/session.ts`. The link helpers sit beside it.

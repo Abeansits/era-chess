@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Difficulty } from './engine/levels'
+import { parseFen } from './engine/position'
 import type { Color } from './engine/squares'
-import { createSession, type PlayMode, type Session } from './game/session'
+import { createSession, sessionFromLink, type PlayMode, type Session } from './game/session'
 import { eras, type EraId } from './rules/eras'
 import { SETTLE_MS, easeOutCubic } from './ui/blend'
-import { museumSearch, readMuseumQuery } from './ui/query'
+import { museumSearch, readGameLink, readMuseumQuery } from './ui/query'
 import { Museum } from './ui/Museum'
 import { PlayView } from './ui/PlayView'
 import { useReducedMotion } from './ui/useReducedMotion'
@@ -25,7 +26,11 @@ export function App() {
   const [urlLive, setUrlLive] = useState(() => !initialMuseum().unknownStop)
   const [human, setHuman] = useState<Color>('w')
   const [difficulty, setDifficulty] = useState<Difficulty>('medium')
-  const [session, setSession] = useState<Session | null>(null)
+  const [session, setSession] = useState<Session | null>(() => {
+    if (typeof window === 'undefined') return null
+    const link = readGameLink(window.location.search)
+    return link ? sessionFromLink(link, Date.now()) : null
+  })
   const reduced = useReducedMotion()
   const indexRef = useRef(index)
   const frame = useRef(0)
@@ -117,6 +122,7 @@ export function App() {
           onHuman={setHuman}
           onDifficulty={setDifficulty}
           onStart={(mode: PlayMode) => {
+            const now = Date.now()
             setSession(
               createSession({
                 eraId: era.id,
@@ -124,7 +130,23 @@ export function App() {
                 mode,
                 human,
                 difficulty,
-                now: Date.now(),
+                now,
+                seed: now || 1,
+              }),
+            )
+          }}
+          onPlayPosition={(fen) => {
+            const now = Date.now()
+            setSession(
+              createSession({
+                eraId: era.id,
+                chipId,
+                mode: 'engine',
+                human: parseFen(fen).turn,
+                difficulty,
+                fen,
+                now,
+                seed: now || 1,
               }),
             )
           }}

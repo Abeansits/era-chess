@@ -10,7 +10,9 @@ export function boardLines(rules: Rules): string[] {
     ? 'Pawns move one square. No en passant.'
     : rules.enPassant
       ? 'A pawn may double-step, and be taken in passing.'
-      : 'A pawn may double-step. Passar battaglia: no capture in passing.'
+      : rules.id.includes('italy')
+        ? 'A pawn may double-step. Passar battaglia: no capture in passing.'
+        : 'A pawn may double-step. There is no capture in passing.'
   const castle =
     rules.castling === 'none'
       ? 'No castling.'

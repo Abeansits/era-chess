@@ -2,11 +2,12 @@ import { explainDrop } from '../engine/explain'
 import { legalMoves, makeMove } from '../engine/moves'
 import { notationPair } from '../engine/notation'
 import { outcome } from '../engine/outcome'
-import { parseFen, positionKey, startFen } from '../engine/position'
+import { moveUci, parseFen, positionKey, startFen, toFen } from '../engine/position'
 import { opposite, sqName, type Color, type PieceKind } from '../engine/squares'
 import type { GameResult, Move, Position, Rules } from '../engine/types'
 import type { Difficulty } from '../engine/levels'
 import { type EraId, resolveRules, eraById } from '../rules/eras'
+import { gameSearch, type GameLink } from '../ui/query'
 
 export type PlayMode = 'pass' | 'engine'
 
@@ -30,6 +31,12 @@ export type Session = {
   difficulty: Difficulty
   clocks: { w: number; b: number } | null
   clockStamp: number | null
+  /** Position the game started from. Rematch and the share link return here. */
+  startFen: string
+  /** Chosen once per game. The search mixes it with the ply. */
+  seed: number
+  /** Pass and play keeps White at the bottom instead of turning every ply. */
+  boardStill: boolean
 }
 
 export type Attempt =
@@ -47,11 +54,15 @@ export function createSession(input: {
   human?: Color
   difficulty?: Difficulty
   now?: number
+  fen?: string
+  seed?: number
+  boardStill?: boolean
 }): Session {
   const era = eraById(input.eraId)
   const chipId = input.chipId || era.defaultChip
   const rules = resolveRules(era, chipId)
-  const pos = parseFen(startFen(rules))
+  const opening = input.fen ?? startFen(rules)
+  const pos = parseFen(opening)
   const now = input.now ?? 0
   const session: Session = {
     eraId: input.eraId,
@@ -66,6 +77,9 @@ export function createSession(input: {
     difficulty: input.difficulty ?? 'medium',
     clocks: rules.clock ? { w: CLOCK_MS, b: CLOCK_MS } : null,
     clockStamp: rules.clock ? now : null,
+    startFen: toFen(pos),
+    seed: input.seed ?? (now || 1),
+    boardStill: input.boardStill ?? false,
   }
   return session
 }
@@ -176,4 +190,51 @@ export function agreeDraw(session: Session): Session {
 
 export function squareLabel(sq: number): string {
   return sqName(sq)
+}
+
+/** The position after `ply` moves. Zero is the start of this game. */
+export function positionAt(session: Session, ply: number): Position {
+  let pos = parseFen(session.startFen)
+  const end = Math.max(0, Math.min(ply, session.history.length))
+  for (let i = 0; i < end; i++) pos = makeMove(pos, session.rules, session.history[i].move)
+  return pos
+}
+
+export function replayUci(session: Session, ucis: string[], now = 0): Session {
+  let current = session
+  for (const uci of ucis) {
+    const move = legalMoves(current.pos, current.rules).find((item) => moveUci(item) === uci)
+    if (!move) break
+    current = commitMove(current, move, now)
+  }
+  return current
+}
+
+export function sessionFromLink(link: GameLink, now = 0): Session {
+  const opened = createSession({
+    eraId: link.eraId,
+    chipId: link.chipId,
+    mode: link.mode,
+    human: link.human,
+    difficulty: link.difficulty,
+    fen: link.fen ?? undefined,
+    now,
+    seed: now || 1,
+    boardStill: link.boardStill,
+  })
+  return replayUci(opened, link.moves, now)
+}
+
+export function shareLink(session: Session): string {
+  const custom = session.startFen !== startFen(session.rules)
+  return gameSearch({
+    eraId: session.eraId,
+    chipId: session.chipId,
+    mode: session.mode,
+    human: session.human,
+    difficulty: session.difficulty,
+    fen: custom ? session.startFen : null,
+    moves: session.history.map((entry) => moveUci(entry.move)),
+    boardStill: session.boardStill,
+  })
 }

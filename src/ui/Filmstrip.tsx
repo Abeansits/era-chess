@@ -123,7 +123,7 @@ export function Filmstrip({ index, dragging, onPreview, onCommit }: Props) {
           className="caption-slot"
           style={{
             opacity: slot.opacity,
-            transform: `translateY(${(slot.entering ? 1 - slot.opacity : slot.opacity - 1) * 8}px)`,
+            transform: `translateY(${slot.travel * 10}px)`,
           }}
         >
           {shown.name}

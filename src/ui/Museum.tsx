@@ -1,8 +1,10 @@
+import { useEffect, useRef, useState } from 'react'
 import { Button } from '../components/ui/button'
 import { LEVELS, type Difficulty } from '../engine/levels'
 import type { Color } from '../engine/squares'
 import { activeChip, eras, resolveRules, type EraId } from '../rules/eras'
 import { stripFor } from '../rules/strips'
+import { ARRIVAL } from './arrival'
 import { blendSlot } from './blend'
 import { Filmstrip } from './Filmstrip'
 import { leapOpacity } from './leap'
@@ -25,6 +27,7 @@ export function Museum({
   onDifficulty,
   onStart,
   unknownStop,
+  onPlayPosition,
 }: {
   index: number
   dragging: boolean
@@ -39,6 +42,7 @@ export function Museum({
   onDifficulty: (level: Difficulty) => void
   onStart: (mode: 'pass' | 'engine') => void
   unknownStop: string | null
+  onPlayPosition: (fen: string) => void
 }) {
   const x = Math.min(6, Math.max(0, index))
   const nearest = Math.round(x)
@@ -46,6 +50,16 @@ export function Museum({
   const strip = stripFor(era.id as EraId, chipId)
   const leap = Math.min(1, Math.max(0, (x - 2) / 2))
   const leapShown = leapOpacity(x, reduced)
+  const [toast, setToast] = useState<string | null>(null)
+  const settled = useRef(nearest)
+  useEffect(() => {
+    if (dragging) return
+    if (settled.current === nearest) return
+    settled.current = nearest
+    setToast(ARRIVAL[era.id])
+    const id = window.setTimeout(() => setToast(null), 3200)
+    return () => window.clearTimeout(id)
+  }, [dragging, nearest, era.id])
 
   return (
     <main className="museum">
@@ -55,6 +69,11 @@ export function Museum({
         </p>
       ) : null}
       <Filmstrip index={x} dragging={dragging} onPreview={onPreview} onCommit={onCommit} />
+      {toast ? (
+        <p className="arrival" data-testid="arrival-toast" role="status">
+          {toast}
+        </p>
+      ) : null}
       <LeapMorph t={leap} opacity={leapShown} />
       <div className="museum-grid">
         <PreviewBoard index={x} reduced={reduced} />
@@ -97,11 +116,19 @@ export function Museum({
       </div>
       <section className="strip" data-testid="board-strip">
         <header>
-          <h2>{strip.heading}</h2>
+          <div className="strip-head">
+            <h2>{strip.heading}</h2>
+            {strip.play ? (
+              <Button data-testid="play-position" size="sm" variant="ink" onClick={() => onPlayPosition(strip.play!.fen)}>
+                Play this position
+              </Button>
+            ) : null}
+          </div>
           <p>{strip.note}</p>
         </header>
         <div className="strip-boards">
           <MiniBoard
+            key={`${strip.left.rules.id}:${strip.left.fen}`}
             fen={strip.left.fen}
             rules={strip.left.rules}
             arrows={strip.arrows}
@@ -112,6 +139,7 @@ export function Museum({
             badge={strip.left.badge}
           />
           <MiniBoard
+            key={`${strip.right.rules.id}:${strip.right.fen}`}
             fen={strip.right.fen}
             rules={strip.right.rules}
             arrows={strip.arrows}
@@ -140,9 +168,9 @@ function FadingCard({
 }) {
   const x = Math.min(6, Math.max(0, index))
   const nearest = Math.round(x)
-  const slot = reduced ? { at: nearest, opacity: 1, entering: false } : blendSlot(x)
+  const slot = reduced ? { at: nearest, opacity: 1, entering: false, travel: 0 } : blendSlot(x)
   const era = eras[slot.at]
-  const shift = (slot.entering ? 1 - slot.opacity : slot.opacity - 1) * 10
+  const shift = slot.travel * 16
   return (
     <div className="card-stage" data-blend-at={slot.at} data-blend-opacity={slot.opacity.toFixed(2)}>
       <div

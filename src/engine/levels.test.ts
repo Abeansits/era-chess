@@ -14,6 +14,8 @@ describe('difficulty', () => {
     expect(LEVELS[0].maxDepth).toBeLessThan(LEVELS[1].maxDepth)
     expect(LEVELS[1].maxDepth).toBeLessThan(LEVELS[2].maxDepth)
     expect(LEVELS[2].jitter).toBe(0)
+    expect(LEVELS[2].detail.toLowerCase()).not.toContain('clock')
+    expect(LEVELS[2].detail).toContain('half')
   })
 })
 

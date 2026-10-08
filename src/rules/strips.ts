@@ -18,6 +18,8 @@ export type StripModel = {
   /** When true, the badge is the position’s result, not the result of an arrow. */
   positionResult: boolean
   active: 'left' | 'right' | null
+  /** Opens a live game from this diagram. Bare king and stalemate. */
+  play?: { fen: string }
 }
 
 const BARE = '8/p7/8/4k3/8/8/R7/7K w - - 0 1'
@@ -44,6 +46,7 @@ export function stripFor(eraId: EraId, chipId?: string): StripModel {
       arrows: [{ from: 'a2', to: 'a7' }],
       positionResult: false,
       active: 'left',
+      play: { fen: BARE },
     }
   }
   if (eraId === 'medieval') {
@@ -127,6 +130,7 @@ export function stripFor(eraId: EraId, chipId?: string): StripModel {
       arrows: [],
       positionResult: true,
       active: 'right',
+      play: { fen: STALE },
     }
   }
   return {

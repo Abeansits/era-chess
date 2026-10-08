@@ -4,8 +4,9 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../compon
 import { countColor } from '../engine/position'
 import { opposite, sqName, type Color, type PieceKind } from '../engine/squares'
 import { requestMove } from '../engine/engineClient'
+import { engineSeed } from '../engine/search'
 import { levelById } from '../engine/levels'
-import { agreeDraw, attemptDrop, commitMove, createSession, resign, resigningSide, tick, type Session } from '../game/session'
+import { agreeDraw, attemptDrop, commitMove, createSession, positionAt, resign, resigningSide, shareLink, tick, type Session } from '../game/session'
 import { activeChip, eraById } from '../rules/eras'
 import { resultTitle } from '../rules/describe'
 import { PieceGlyph } from './pieces'
@@ -43,13 +44,28 @@ export function PlayView({
   const [engineError, setEngineError] = useState<string | null>(null)
   const [rulesOpen, setRulesOpen] = useState(false)
   const [confirmLeave, setConfirmLeave] = useState(false)
+  const [confirmDraw, setConfirmDraw] = useState(false)
+  const [shareNote, setShareNote] = useState<string | null>(null)
+  const [viewPly, setViewPly] = useState<number | null>(null)
+  const [trackedMoves, setTrackedMoves] = useState(session.history.length)
+  if (trackedMoves !== session.history.length) {
+    setTrackedMoves(session.history.length)
+    setViewPly(null)
+  }
   const [now, setNow] = useState(() => Date.now())
   const thinkId = useRef(0)
   const era = eraById(session.eraId)
   const chip = activeChip(era, session.chipId)
   const collapsed = session.history.length >= 20 && !rulesOpen
-  const orientation: Color = session.mode === 'pass' ? session.pos.turn : session.human
-  const lastMove = session.history.at(-1)?.move ?? null
+  const browsing = viewPly !== null
+  const shown = browsing ? positionAt(session, viewPly) : session.pos
+  const orientation: Color =
+    session.mode === 'engine' ? session.human : session.boardStill ? 'w' : shown.turn
+  const lastMove = browsing
+    ? viewPly > 0
+      ? session.history[viewPly - 1].move
+      : null
+    : session.history.at(-1)?.move ?? null
 
   useEffect(() => {
     if (!reason) return
@@ -70,7 +86,7 @@ export function PlayView({
   }, [now, session, onSession])
 
   useEffect(() => {
-    if (session.mode !== 'engine' || session.result || session.pos.turn === session.human) return
+    if (viewPly !== null || session.mode !== 'engine' || session.result || session.pos.turn === session.human) return
     const id = ++thinkId.current
     setThinking(true)
     setEngineError(null)
@@ -78,7 +94,7 @@ export function PlayView({
       pos: session.pos,
       rules: session.rules,
       difficulty: session.difficulty,
-      seed: session.history.length * 97 + 11,
+      seed: engineSeed(session.seed, session.history.length),
       hashes: session.hashes,
     })
     let cancelled = false
@@ -104,7 +120,7 @@ export function PlayView({
       job.cancel()
       thinkId.current += 1
     }
-  }, [session, onSession])
+  }, [session, onSession, viewPly])
 
   function drop(from: number, to: number, choice?: { promotion?: PieceKind; rookTo?: number }) {
     if (pending?.kind === 'rook' && choice?.rookTo === undefined) {
@@ -130,6 +146,16 @@ export function PlayView({
     setPending(null)
     setReason(null)
     onSession(attempt.session)
+  }
+
+  async function share() {
+    const href = `${window.location.origin}${window.location.pathname}${shareLink(session)}`
+    try {
+      await navigator.clipboard.writeText(href)
+      setShareNote('Link copied.')
+    } catch {
+      setShareNote(href)
+    }
   }
 
   function remaining(side: Color): number {
@@ -176,7 +202,10 @@ export function PlayView({
                     mode: session.mode,
                     human: session.human,
                     difficulty: session.difficulty,
+                    fen: session.startFen,
+                    boardStill: session.boardStill,
                     now: Date.now(),
+                    seed: Date.now() || 1,
                   }),
                 )
               }
@@ -184,10 +213,13 @@ export function PlayView({
               Play again
             </Button>
           ) : (
-            <Button variant="quiet" size="sm" data-testid="agree-draw" onClick={() => onSession(agreeDraw(session))}>
+            <Button variant="quiet" size="sm" data-testid="agree-draw" onClick={() => setConfirmDraw(true)}>
               Agree a draw
             </Button>
           )}
+          <Button variant="quiet" size="sm" data-testid="share" onClick={() => void share()}>
+            Share
+          </Button>
           <Button
             variant="quiet"
             size="sm"
@@ -214,25 +246,43 @@ export function PlayView({
               Thinking · {levelById(session.difficulty).label}
             </p>
           ) : (
-            <p className="turn-line" aria-live="polite">
-              {session.result
-                ? resultTitle(session.result)
-                : yourTurn
-                  ? `${turnName} to move`
-                  : 'Waiting for the engine'}
+            <p className="turn-line" data-testid="sheet-browse" aria-live="polite">
+              {browsing
+                ? `Looking at move ${viewPly} of ${session.history.length}. The game waits.`
+                : session.result
+                  ? resultTitle(session.result)
+                  : yourTurn
+                    ? `${turnName} to move`
+                    : 'Waiting for the engine'}
             </p>
           )}
+          {session.mode === 'pass' ? (
+            <button
+              type="button"
+              className="text-link"
+              data-testid="board-still"
+              aria-pressed={session.boardStill}
+              onClick={() => onSession({ ...session, boardStill: !session.boardStill })}
+            >
+              {session.boardStill ? 'White stays down' : 'Turn the board each ply'}
+            </button>
+          ) : null}
+          {shareNote ? (
+            <p className="share-note" data-testid="share-status" role="status">
+              {shareNote}
+            </p>
+          ) : null}
           {reason ? (
             <p className="reason reason-near" data-testid="illegal-reason" role="status">
               {reason.text}
             </p>
           ) : null}
           <PlayBoard
-            pos={session.pos}
+            pos={shown}
             rules={session.rules}
             orientation={orientation}
             lastMove={lastMove}
-            disabled={Boolean(session.result) || thinking || !yourTurn}
+            disabled={browsing || Boolean(session.result) || thinking || !yourTurn}
             onDrop={(from, to) => drop(from, to)}
             onReason={(text, square) => setReason({ text, square })}
             reasonSquare={reason?.square ?? null}
@@ -274,7 +324,7 @@ export function PlayView({
             ) : null}
           </div>
         </div>
-        <Scoresheet history={session.history} rules={session.rules} />
+        <Scoresheet history={session.history} rules={session.rules} viewPly={viewPly} onView={setViewPly} />
       </div>
 
       <Dialog
@@ -300,6 +350,28 @@ export function PlayView({
                   </button>
                 ))
               : null}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={confirmDraw} onOpenChange={setConfirmDraw}>
+        <DialogContent>
+          <DialogTitle>Agree a draw?</DialogTitle>
+          <DialogDescription>Both sides end the game here. You can still play this stop again.</DialogDescription>
+          <div className="start-row">
+            <Button
+              variant="ink"
+              data-testid="confirm-draw"
+              onClick={() => {
+                setConfirmDraw(false)
+                onSession(agreeDraw(session))
+              }}
+            >
+              Agree
+            </Button>
+            <Button variant="ghost" onClick={() => setConfirmDraw(false)}>
+              Keep playing
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
